@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Schedule Content</title>
+    <style>
+        body { font-family: Arial; max-width: 500px; margin: 50px auto; padding: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+        button { padding: 15px 30px; font-size: 18px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background: #45a049; }
+        #result { margin-top: 20px; padding: 15px; background: #f0f0f0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Schedule Weekly Content</h1>
+    <p>Paste your Google Doc URL below:</p>
+
+    <input type="text" id="docUrl" placeholder="https://docs.google.com/document/d/..." />
+    <button onclick="submit()">Schedule Posts</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function submit() {
+            const url = document.getElementById('docUrl').value;
+            const result = document.getElementById('result');
+
+            if (!url) {
+                result.textContent = 'Please enter a Google Doc URL';
+                return;
+            }
+
+            result.textContent = 'Sending request...';
+
+            try {
+                const response = await fetch('https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.text();
+                result.textContent = 'Response:\n' + data;
+            } catch (error) {
+                result.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  hypefury-scheduler:
+    image: node:20-slim
+    container_name: hypefury-scheduler
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3001:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - HF_API_KEY=${HF_API_KEY}
+    command: >
+      sh -c '
+        apt-get update && apt-get install -y curl &&
+        mkdir -p /app/build &&
+        cat > /app/package.json << "PKGJSON"
+      {
+        "name": "hypefury-scheduler",
+        "version": "1.0.0",
+        "type": "module",
+        "dependencies": {
+          "dotenv": "^16.4.7",
+          "express": "^4.18.2",
+          "node-fetch": "^2.7.0"
+        }
+      }
+      PKGJSON
+        cat > /app/build/utils.js << "UTILSJS"
+      import fetch from "node-fetch";
+      export const HF_BASE_URL = "https://app.hypefury.com";
+      export const HF_AUTH_ENDPOINT = HF_BASE_URL + "/api/externalApps/auth";
+      export const HF_SCHEDULE_ENDPOINT = HF_BASE_URL + "/api/externalApps/posts/save";
+      export const HF_PARTNER_KEY = "NjhiNGQ1NWItOWFjNi00MDlkLWI2MjktNjhkNTk5OTNkZWQz";
+      export function getApiKey() { return process.env.HF_API_KEY; }
+      export async function makeHfRequest(url, body) {
+        const apiKey = getApiKey();
+        if (!apiKey) { return { statusCode: 500, message: "API key missing" }; }
+        const headers = { "Authorization": "Bearer " + HF_PARTNER_KEY + ":" + apiKey, "Content-Type": "application/json" };
+        try {
+          const response = body
+            ? await fetch(url, { method: "POST", headers, body })
+            : await fetch(url, { method: "GET", headers });
+          const text = await response.text();
+          return { statusCode: response.status, message: text || null };
+        } catch (e) { return { statusCode: 500, message: e.message }; }
+      }
+      UTILSJS
+        cat > /app/build/server.js << "SERVERJS"
+      import express from "express";
+      import { makeHfRequest, HF_AUTH_ENDPOINT, HF_SCHEDULE_ENDPOINT } from "./utils.js";
+      const app = express();
+      app.use(express.json());
+      const PORT = process.env.PORT || 8080;
+      app.get("/health", (req, res) => res.json({ status: "ok", service: "hypefury-scheduler" }));
+      app.post("/api/auth", async (req, res) => {
+        const r = await makeHfRequest(HF_AUTH_ENDPOINT);
+        if (!r) return res.status(500).json({ success: false, message: "Unable to authenticate" });
+        if (r.statusCode === 409) return res.json({ success: true, message: "Already authenticated" });
+        if (r.statusCode === 403) return res.status(403).json({ success: false, message: "Invalid API key" });
+        if (r.statusCode === 200) return res.json({ success: true, message: "Authenticated successfully" });
+        return res.status(r.statusCode || 500).json({ success: false, message: "Unexpected: " + r.statusCode });
+      });
+      app.post("/api/schedule", async (req, res) => {
+        const msg = req.body.message || req.body.text;
+        if (!msg) return res.status(400).json({ success: false, message: "Message required" });
+        const r = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify({ text: msg }));
+        if (!r) return res.status(500).json({ success: false, message: "Unable to schedule" });
+        if (r.statusCode === 200 || r.statusCode === 201) {
+          let data = null; try { data = JSON.parse(r.message); } catch(e) {}
+          return res.json({ success: true, message: "Post scheduled", data });
+        }
+        return res.status(r.statusCode || 500).json({ success: false, message: r.message });
+      });
+      app.get("/api/info", (req, res) => res.json({
+        name: "Hypefury Scheduler API", version: "1.0.0",
+        endpoints: [
+          { method: "GET", path: "/health" },
+          { method: "POST", path: "/api/auth" },
+          { method: "POST", path: "/api/schedule", body: { message: "string" } },
+          { method: "GET", path: "/api/info" }
+        ]
+      }));
+      app.listen(PORT, () => console.log("Hypefury Scheduler running on port " + PORT));
+      SERVERJS
+        npm install &&
+        node build/server.js
+      '
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

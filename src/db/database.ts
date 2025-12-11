@@ -175,13 +175,13 @@ export function deleteClient(id: number): boolean {
 }
 
 /**
- * Mask an API key for safe display (show only last 4 characters)
+ * Mask an API key for safe display (show first 6 characters)
  */
 export function maskApiKey(apiKey: string): string {
-    if (apiKey.length <= 4) {
-        return '****';
+    if (apiKey.length <= 6) {
+        return apiKey.substring(0, apiKey.length) + '••••••';
     }
-    return '****' + apiKey.slice(-4);
+    return apiKey.substring(0, 6) + '••••••';
 }
 
 /**

@@ -2,6 +2,13 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# Install build tools for native modules (better-sqlite3)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
@@ -12,6 +19,9 @@ COPY src/ ./src/
 
 # Build TypeScript code
 RUN npm run build
+
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
 
 # Set environment variables
 ENV NODE_ENV=production

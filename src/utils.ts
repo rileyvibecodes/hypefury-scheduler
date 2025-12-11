@@ -18,10 +18,11 @@ export function getApiKey(): string | undefined {
  * Makes requests to the Hypefury API
  * @param url The API endpoint URL
  * @param body Optional request body for POST requests
+ * @param customApiKey Optional API key to use instead of environment variable (for multi-client support)
  * @returns API response data
  */
-export async function makeHfRequest(url: string, body?: string) {
-    const apiKey = getApiKey();
+export async function makeHfRequest(url: string, body?: string, customApiKey?: string) {
+    const apiKey = customApiKey || getApiKey();
     console.log(`Making request to ${url}`);
     if (!apiKey) {
         console.error('HF_API_KEY is not defined');

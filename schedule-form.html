@@ -35,7 +35,9 @@
                 const response = await fetch('https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: url })
+                    body: JSON.stringify({
+                        posts: [{ text: url }] // For now, sends URL as text. Update to parse Google Doc content.
+                    })
                 });
 
                 const data = await response.text();

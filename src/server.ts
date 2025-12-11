@@ -73,19 +73,30 @@ async function fetchGoogleDocContent(docId: string): Promise<string> {
 }
 
 function parseDocumentIntoPosts(content: string): string[] {
-  // Split by double newlines (paragraphs) or horizontal rules
-  // Also handle Windows-style line endings
-  const normalizedContent = content.replace(/\r\n/g, '\n');
+  // Normalize line endings
+  let normalizedContent = content.replace(/\r\n/g, '\n');
 
-  // Split by double newlines or more
+  // Split by separator lines (underscores, dashes, equals signs)
+  // These are typically used to separate posts in Google Docs
   const posts = normalizedContent
-    .split(/\n\n+/)
-    .map(p => p.trim())
+    .split(/\n[_\-=]{3,}\n/)
+    .map(p => {
+      let post = p.trim();
+
+      // Remove "Day X" or "Day X:" headers at the start
+      post = post.replace(/^Day\s*\d+:?\s*\n?/i, '');
+
+      // Convert * bullet points to • for consistency
+      post = post.replace(/^\*\s/gm, '• ');
+
+      // Ensure proper line breaks (single newline between lines)
+      post = post.replace(/\n{3,}/g, '\n\n');
+
+      return post.trim();
+    })
     .filter(p => p.length > 0)
     // Filter out very short content that's likely not a real post
-    .filter(p => p.length >= 5)
-    // Filter out separator lines (only underscores, dashes, equals, asterisks, etc.)
-    .filter(p => !/^[\s_\-=*~#]+$/.test(p))
+    .filter(p => p.length >= 10)
     // Must contain at least one letter to be a real post
     .filter(p => /[a-zA-Z]/.test(p));
 

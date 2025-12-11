@@ -2,6 +2,14 @@
 
 This project is a Model Context Protocol (MCP) server for integrating with Hypefury, a social media scheduling and growth platform. The server provides tools for authenticating with Hypefury and scheduling posts, with full support for N8N automation workflows.
 
+## Production Deployment
+
+**Live URL**: https://scheduler.srv1176124.hstgr.cloud/
+
+The scheduler is deployed on Hostinger VPS with Traefik reverse proxy handling SSL/TLS.
+
+**N8N Webhook**: https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content
+
 ## Features
 
 - Authentication with Hypefury API

@@ -1,0 +1,47 @@
+# Production deployment for Hostinger VPS with Traefik
+# Deploy using: Hostinger API or docker-compose up -d
+
+services:
+  init:
+    image: alpine:latest
+    container_name: hypefury-init
+    volumes:
+      - html_data:/public
+    command: |
+      sh -c '
+      mkdir -p /public
+      cat > /public/index.html << "HTMLEND"
+      <!DOCTYPE html><html><head><title>Hypefury Scheduler</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5}.container{background:#fff;padding:30px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.1)}h1{color:#333;margin-bottom:10px}.subtitle{color:#666;margin-bottom:25px}label{display:block;margin-bottom:8px;font-weight:500;color:#444}textarea{width:100%;padding:12px;margin-bottom:15px;font-size:16px;border:1px solid #ddd;border-radius:8px;min-height:150px;resize:vertical}textarea:focus{outline:0;border-color:#4CAF50}button{width:100%;padding:15px;font-size:16px;font-weight:600;background:#4CAF50;color:#fff;border:0;border-radius:8px;cursor:pointer}button:hover{background:#45a049}button:disabled{background:#ccc;cursor:not-allowed}#result{margin-top:20px;padding:15px;background:#f8f9fa;border-radius:8px;white-space:pre-wrap;font-family:monospace;font-size:14px;display:none}#result.show{display:block}#result.success{background:#d4edda;color:#155724}#result.error{background:#f8d7da;color:#721c24}.help{font-size:13px;color:#888;margin-top:-10px;margin-bottom:15px}</style></head><body><div class="container"><h1>Hypefury Scheduler</h1><p class="subtitle">Schedule posts to your Hypefury queue</p><label>Posts (separate with blank lines)</label><textarea id="posts" placeholder="Enter posts here..."></textarea><p class="help">Ctrl+Enter to submit</p><button onclick="go()" id="btn">Schedule Posts</button><div id="result"></div></div><script>async function go(){var t=document.getElementById("posts").value.trim(),e=document.getElementById("result"),n=document.getElementById("btn");if(!t)return e.textContent="Enter at least one post",void(e.className="show error");var s=t.split(/\n\n+/).map(function(t){return t.trim()}).filter(function(t){return t}).map(function(t){return{text:t}});n.disabled=!0,n.textContent="Scheduling...",e.textContent="Sending...",e.className="show";try{var o=await fetch("https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({posts:s})}),a=await o.json();a.success?(e.textContent="Done! "+a.message,e.className="show success",document.getElementById("posts").value=""):(e.textContent="Error: "+(a.message||"Unknown"),e.className="show error")}catch(t){e.textContent="Error: "+t.message,e.className="show error"}n.disabled=!1,n.textContent="Schedule Posts"}document.getElementById("posts").onkeydown=function(t){t.ctrlKey&&"Enter"===t.key&&go()}</script></body></html>
+      HTMLEND
+      echo "HTML file created"
+      '
+
+  web:
+    image: joseluisq/static-web-server:2
+    container_name: hypefury-scheduler
+    restart: unless-stopped
+    expose:
+      - "80"
+    environment:
+      - SERVER_ROOT=/public
+    volumes:
+      - html_data:/public:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hypefury.rule=Host(`scheduler.srv1176124.hstgr.cloud`)
+      - traefik.http.routers.hypefury.tls=true
+      - traefik.http.routers.hypefury.entrypoints=web,websecure
+      - traefik.http.routers.hypefury.tls.certresolver=mytlschallenge
+      - traefik.http.services.hypefury.loadbalancer.server.port=80
+    networks:
+      - root_default
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+volumes:
+  html_data:
+
+networks:
+  root_default:
+    external: true

@@ -531,6 +531,31 @@ export function getClientStats(clientId: number): {
 }
 
 /**
+ * Get recent posts with their status and errors (for logs view)
+ */
+export function getRecentPostLogs(limit: number = 50): Post[] {
+  const stmt = getOperationsDb().prepare(`
+    SELECT * FROM posts
+    ORDER BY created_at DESC
+    LIMIT ?
+  `);
+  return stmt.all(limit) as Post[];
+}
+
+/**
+ * Get failed posts only (for error logs)
+ */
+export function getFailedPosts(limit: number = 50): Post[] {
+  const stmt = getOperationsDb().prepare(`
+    SELECT * FROM posts
+    WHERE status IN ('failed', 'permanently_failed', 'rejected')
+    ORDER BY created_at DESC
+    LIMIT ?
+  `);
+  return stmt.all(limit) as Post[];
+}
+
+/**
  * Close the operations database
  */
 export function closeOperationsDb(): void {

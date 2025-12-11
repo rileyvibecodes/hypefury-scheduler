@@ -33,13 +33,15 @@ import {
   getRecentOperations,
   createPostRecord,
   markPostSent,
+  markPostPermanentlyFailed,
   getSystemHealth,
-  getPostsByOperation
+  getPostsByOperation,
+  getRecentPostLogs,
+  getFailedPosts
 } from './db/operations.js';
 
-// Queue imports
-import { addToRetryQueue, getRetryQueueStatus } from './queue/retryQueue.js';
-import { startRetryWorker, getWorkerStatus } from './queue/retryWorker.js';
+// Queue imports (retry queue status only - auto-retry disabled)
+import { getRetryQueueStatus } from './queue/retryQueue.js';
 
 // Dashboard imports
 import { getDashboardHTML } from './dashboard/templates.js';
@@ -50,8 +52,7 @@ dotenv.config();
 initializeDatabase();
 initializeOperationsDb();
 
-// Start retry worker
-startRetryWorker();
+// Note: Auto-retry worker disabled - failures are logged but not automatically retried
 
 // Google Doc URL parsing
 function extractGoogleDocId(url: string): string | null {
@@ -1053,16 +1054,32 @@ app.get('/api/dashboard/queue', (_req: Request, res: Response) => {
   }
 });
 
-// Dashboard API - Worker status
-app.get('/api/dashboard/worker', (_req: Request, res: Response) => {
+// Dashboard API - Logs (recent posts with errors)
+app.get('/api/dashboard/logs', (req: Request, res: Response) => {
   try {
-    const workerStatus = getWorkerStatus();
-    return res.json({ success: true, worker: workerStatus });
+    const limit = parseInt(req.query.limit as string) || 50;
+    const failedOnly = req.query.failed === 'true';
+
+    const posts = failedOnly ? getFailedPosts(limit) : getRecentPostLogs(limit);
+
+    // Enrich with client names
+    const enrichedPosts = posts.map(post => {
+      const client = getClientById(post.client_id);
+      return {
+        ...post,
+        clientName: client?.name || `Client #${post.client_id}`,
+        // Parse JSON fields for the frontend
+        issuesParsed: JSON.parse(post.issues_detected || '[]'),
+        correctionsParsed: JSON.parse(post.corrections_applied || '[]')
+      };
+    });
+
+    return res.json({ success: true, logs: enrichedPosts });
   } catch (error) {
-    console.error('Error getting worker status:', error);
+    console.error('Error getting logs:', error);
     return res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to get worker status'
+      message: error instanceof Error ? error.message : 'Failed to get logs'
     });
   }
 });
@@ -1453,12 +1470,13 @@ app.post('/api/schedule/google-doc', async (req: Request, res: Response) => {
         });
       } else {
         failCount++;
-        // Add to retry queue
-        addToRetryQueue(postId, response?.message || `HTTP ${response?.statusCode || 'Unknown'}`);
+        // Mark as failed (no auto-retry)
+        const errorMsg = response?.message || `HTTP ${response?.statusCode || 'Unknown'}`;
+        markPostPermanentlyFailed(postId, errorMsg);
         results.push({
           index: i,
           success: false,
-          message: `Queued for retry: ${response?.message || 'API error'}`,
+          message: `Failed: ${errorMsg}`,
           preview: pipelineResult.processedContent.substring(0, 50) + (pipelineResult.processedContent.length > 50 ? '...' : ''),
           qualityScore: pipelineResult.qualityScore
         });
@@ -1681,7 +1699,7 @@ app.listen(PORT, () => {
   console.log(`  Google Doc:      POST http://localhost:${PORT}/api/schedule/google-doc`);
   console.log(`  N8N webhook:     POST http://localhost:${PORT}/webhook/schedule-content`);
   console.log(`\nQuality Pipeline: ACTIVE`);
-  console.log(`Retry Worker: ACTIVE (checking every 15s)`);
+  console.log(`Auto-Retry: DISABLED (failures logged for manual review)`);
   console.log(`\n`);
 });
 

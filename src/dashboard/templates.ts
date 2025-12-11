@@ -107,26 +107,36 @@ export function getDashboardHTML(): string {
         .queue-item.warning .queue-count { color: #FFC107; }
         .queue-item.error .queue-count { color: #f44336; }
 
-        /* Operations Table */
-        .operations-card {
+        /* Card styles */
+        .card {
             background: white;
             border-radius: 12px;
             padding: 24px;
+            margin-bottom: 24px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .operations-card h2 { font-size: 16px; margin-bottom: 16px; color: #333; }
-        .operations-table {
+        .card h2 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Tables */
+        .data-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
         }
-        .operations-table th,
-        .operations-table td {
+        .data-table th,
+        .data-table td {
             padding: 12px 8px;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
-        .operations-table th {
+        .data-table th {
             font-size: 11px;
             font-weight: 600;
             color: #666;
@@ -139,10 +149,11 @@ export function getDashboardHTML(): string {
             font-size: 11px;
             font-weight: 500;
         }
-        .status-completed { background: #d4edda; color: #155724; }
-        .status-partial { background: #fff3cd; color: #856404; }
-        .status-failed { background: #f8d7da; color: #721c24; }
+        .status-completed, .status-sent { background: #d4edda; color: #155724; }
+        .status-partial, .status-queued { background: #fff3cd; color: #856404; }
+        .status-failed, .status-permanently_failed { background: #f8d7da; color: #721c24; }
         .status-processing { background: #e7f3ff; color: #004085; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
 
         /* Quality Score Bar */
         .quality-container {
@@ -168,7 +179,7 @@ export function getDashboardHTML(): string {
         .quality-value { font-size: 12px; color: #666; min-width: 30px; }
 
         /* Buttons */
-        .refresh-btn {
+        .btn {
             background: #4CAF50;
             color: white;
             border: none;
@@ -178,9 +189,78 @@ export function getDashboardHTML(): string {
             font-size: 14px;
             transition: background 0.2s;
         }
-        .refresh-btn:hover { background: #45a049; }
-        .refresh-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn:hover { background: #45a049; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-small {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
         .last-updated { font-size: 12px; color: #888; margin-left: 12px; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-radius: 6px;
+        }
+        .tab:hover { background: #f0f0f0; }
+        .tab.active { background: #4CAF50; color: white; }
+
+        /* Error message display */
+        .error-message {
+            background: #fff3f3;
+            border: 1px solid #f8d7da;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #721c24;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .post-preview {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #333;
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Expandable rows */
+        .expandable { cursor: pointer; }
+        .expandable:hover { background: #f8f9fa; }
+        .expand-icon {
+            display: inline-block;
+            width: 20px;
+            transition: transform 0.2s;
+        }
+        .expand-icon.expanded { transform: rotate(90deg); }
+        .details-row { display: none; }
+        .details-row.show { display: table-row; }
+        .details-cell {
+            padding: 16px !important;
+            background: #fafafa;
+        }
 
         /* Loading State */
         .loading {
@@ -198,8 +278,8 @@ export function getDashboardHTML(): string {
 
         /* Responsive */
         @media (max-width: 600px) {
-            .operations-table { font-size: 12px; }
-            .operations-table th, .operations-table td { padding: 8px 4px; }
+            .data-table { font-size: 12px; }
+            .data-table th, .data-table td { padding: 8px 4px; }
             .metric-value { font-size: 24px; }
             .queue-count { font-size: 24px; }
         }
@@ -220,7 +300,7 @@ export function getDashboardHTML(): string {
             <div class="health-header">
                 <div id="healthIndicator" class="health-indicator"></div>
                 <span id="healthStatus" class="health-status">Loading...</span>
-                <button class="refresh-btn" onclick="refreshDashboard()" id="refreshBtn">Refresh</button>
+                <button class="btn" onclick="refreshDashboard()" id="refreshBtn">Refresh</button>
                 <span id="lastUpdated" class="last-updated"></span>
             </div>
             <div class="health-metrics">
@@ -242,34 +322,34 @@ export function getDashboardHTML(): string {
                 </div>
                 <div class="metric error">
                     <div id="rejectedCount" class="metric-value">--</div>
-                    <div class="metric-label">Rejected</div>
+                    <div class="metric-label">Failed</div>
                 </div>
             </div>
         </div>
 
-        <!-- Queue Status -->
+        <!-- Post Status (simplified from retry queue) -->
         <div class="queue-card">
-            <h2>Retry Queue Status</h2>
+            <h2>Post Status</h2>
             <div class="queue-items">
                 <div class="queue-item">
                     <div id="queuePending" class="queue-count">--</div>
-                    <div class="queue-label">Pending</div>
+                    <div class="queue-label">Queued</div>
                 </div>
-                <div class="queue-item warning">
-                    <div id="queueFailed" class="queue-count">--</div>
-                    <div class="queue-label">Awaiting Retry</div>
+                <div class="queue-item" style="background: #d4edda;">
+                    <div id="queueSent" class="queue-count" style="color: #155724;">--</div>
+                    <div class="queue-label">Sent</div>
                 </div>
                 <div class="queue-item error">
-                    <div id="queuePermanent" class="queue-count">--</div>
-                    <div class="queue-label">Permanently Failed</div>
+                    <div id="queueFailed" class="queue-count">--</div>
+                    <div class="queue-label">Failed</div>
                 </div>
             </div>
         </div>
 
         <!-- Recent Operations -->
-        <div class="operations-card">
+        <div class="card">
             <h2>Recent Operations</h2>
-            <table class="operations-table">
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>Time</th>
@@ -285,9 +365,38 @@ export function getDashboardHTML(): string {
                 </tbody>
             </table>
         </div>
+
+        <!-- Logs Section -->
+        <div class="card">
+            <h2>
+                Post Logs
+                <div>
+                    <button class="tab active" onclick="setLogsFilter('all')" id="tabAll">All</button>
+                    <button class="tab" onclick="setLogsFilter('failed')" id="tabFailed">Failed Only</button>
+                </div>
+            </h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Time</th>
+                        <th>Client</th>
+                        <th>Status</th>
+                        <th>Quality</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="6" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
+        // State
+        let logsFilter = 'all';
+
         // Auto-refresh every 30 seconds
         let refreshInterval = setInterval(refreshDashboard, 30000);
 
@@ -303,7 +412,8 @@ export function getDashboardHTML(): string {
                 await Promise.all([
                     loadHealth(),
                     loadQueue(),
-                    loadOperations()
+                    loadOperations(),
+                    loadLogs()
                 ]);
             } catch (e) {
                 console.error('Dashboard refresh failed:', e);
@@ -355,8 +465,16 @@ export function getDashboardHTML(): string {
                 const data = await resp.json();
                 if (data.success) {
                     document.getElementById('queuePending').textContent = data.queue.pending || 0;
-                    document.getElementById('queueFailed').textContent = data.queue.awaitingRetry || 0;
-                    document.getElementById('queuePermanent').textContent = data.queue.permanentlyFailed || 0;
+                    document.getElementById('queueFailed').textContent =
+                        (data.queue.awaitingRetry || 0) + (data.queue.permanentlyFailed || 0);
+
+                    // Calculate sent from logs
+                    const logsResp = await fetch('/api/dashboard/logs?limit=1000');
+                    const logsData = await logsResp.json();
+                    if (logsData.success) {
+                        const sentCount = logsData.logs.filter(l => l.status === 'sent').length;
+                        document.getElementById('queueSent').textContent = sentCount;
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load queue:', e);
@@ -389,14 +507,12 @@ export function getDashboardHTML(): string {
                         pending: 'status-processing'
                     }[op.status] || '';
 
-                    // Calculate average quality for this operation
                     const totalPosts = op.total_posts || 0;
                     const successPosts = op.successful_posts || 0;
+                    const failedPosts = op.failed_posts || 0;
 
-                    // Estimate quality - real implementation would calculate from posts
                     let avgQuality = 0;
                     if (totalPosts > 0) {
-                        // Use corrected and rejected to estimate quality
                         const rejected = op.rejected_posts || 0;
                         const corrected = op.corrected_posts || 0;
                         avgQuality = Math.max(0, 100 - (rejected * 10) - (corrected * 2));
@@ -417,7 +533,7 @@ export function getDashboardHTML(): string {
                         '<td>' + esc(time) + '</td>' +
                         '<td>' + esc(op.clientName || 'Client #' + op.client_id) + '</td>' +
                         '<td>' + esc(typeLabels[op.operation_type] || op.operation_type) + '</td>' +
-                        '<td>' + successPosts + '/' + totalPosts + '</td>' +
+                        '<td>' + successPosts + '/' + totalPosts + (failedPosts > 0 ? ' <span style="color:#dc3545">(' + failedPosts + ' failed)</span>' : '') + '</td>' +
                         '<td><span class="status-badge ' + statusClass + '">' + esc(op.status) + '</span></td>' +
                         '<td>' +
                             '<div class="quality-container">' +
@@ -436,20 +552,108 @@ export function getDashboardHTML(): string {
             }
         }
 
+        async function loadLogs() {
+            try {
+                const failedOnly = logsFilter === 'failed';
+                const resp = await fetch('/api/dashboard/logs?limit=30&failed=' + failedOnly);
+                const data = await resp.json();
+                const tbody = document.getElementById('logsBody');
+
+                if (!data.success) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load logs</td></tr>';
+                    return;
+                }
+
+                if (!data.logs || data.logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">' +
+                        (failedOnly ? 'No failed posts. All good!' : 'No posts yet.') + '</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.logs.map((log, idx) => {
+                    const time = formatTime(log.created_at);
+                    const statusClass = 'status-' + log.status;
+                    const qualityClass = log.quality_score >= 80 ? 'quality-high' :
+                                        log.quality_score >= 50 ? 'quality-medium' : 'quality-low';
+
+                    const hasError = log.status === 'failed' || log.status === 'permanently_failed' || log.status === 'rejected';
+                    const errorText = log.hypefury_response || 'No error details';
+                    const preview = log.processed_content ? log.processed_content.substring(0, 150) + (log.processed_content.length > 150 ? '...' : '') : '';
+
+                    const mainRow = '<tr class="expandable" onclick="toggleDetails(' + idx + ')">' +
+                        '<td><span class="expand-icon" id="icon-' + idx + '">▶</span></td>' +
+                        '<td>' + esc(time) + '</td>' +
+                        '<td>' + esc(log.clientName) + '</td>' +
+                        '<td><span class="status-badge ' + statusClass + '">' + esc(log.status) + '</span></td>' +
+                        '<td>' +
+                            '<div class="quality-container">' +
+                                '<div class="quality-bar">' +
+                                    '<div class="quality-fill ' + qualityClass + '" style="width:' + log.quality_score + '%"></div>' +
+                                '</div>' +
+                                '<span class="quality-value">' + log.quality_score + '</span>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                            (hasError ? esc(errorText.substring(0, 50)) : '<span style="color:#28a745">OK</span>') +
+                        '</td>' +
+                    '</tr>';
+
+                    const detailsRow = '<tr class="details-row" id="details-' + idx + '">' +
+                        '<td colspan="6" class="details-cell">' +
+                            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+                                '<div>' +
+                                    '<strong>Post Content:</strong>' +
+                                    '<div class="post-preview">' + esc(preview) + '</div>' +
+                                '</div>' +
+                                '<div>' +
+                                    (hasError ? '<strong>Error Details:</strong><div class="error-message">' + esc(errorText) + '</div>' : '') +
+                                    (log.correctionsParsed && log.correctionsParsed.length > 0 ?
+                                        '<strong style="margin-top:12px;display:block;">Corrections Applied:</strong><div class="post-preview">' + esc(log.correctionsParsed.join(', ')) + '</div>' : '') +
+                                '</div>' +
+                            '</div>' +
+                        '</td>' +
+                    '</tr>';
+
+                    return mainRow + detailsRow;
+                }).join('');
+            } catch (e) {
+                console.error('Failed to load logs:', e);
+                document.getElementById('logsBody').innerHTML =
+                    '<tr><td colspan="6" class="empty-state">Error loading logs</td></tr>';
+            }
+        }
+
+        function toggleDetails(idx) {
+            const details = document.getElementById('details-' + idx);
+            const icon = document.getElementById('icon-' + idx);
+            if (details.classList.contains('show')) {
+                details.classList.remove('show');
+                icon.classList.remove('expanded');
+            } else {
+                details.classList.add('show');
+                icon.classList.add('expanded');
+            }
+        }
+
+        function setLogsFilter(filter) {
+            logsFilter = filter;
+            document.getElementById('tabAll').classList.toggle('active', filter === 'all');
+            document.getElementById('tabFailed').classList.toggle('active', filter === 'failed');
+            loadLogs();
+        }
+
         function formatTime(isoString) {
             if (!isoString) return '--';
             const date = new Date(isoString);
             const now = new Date();
             const diff = now - date;
 
-            // If less than 24 hours, show relative time
             if (diff < 24 * 60 * 60 * 1000) {
                 if (diff < 60 * 1000) return 'Just now';
                 if (diff < 60 * 60 * 1000) return Math.floor(diff / 60000) + 'm ago';
                 return Math.floor(diff / 3600000) + 'h ago';
             }
 
-            // Otherwise show date
             return date.toLocaleDateString();
         }
 

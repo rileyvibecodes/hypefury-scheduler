@@ -60,7 +60,13 @@ export async function makeHfRequest(url: string, body?: string, customApiKey?: s
 
         console.log(`Response status: ${response.status}`);
         const responseText = await response.text();
-        
+
+        // Log full response for debugging auth issues
+        if (response.status === 403 || response.status === 401) {
+            console.log(`Auth error response body: ${responseText}`);
+            console.log(`API key used (last 8 chars): ...${apiKey.slice(-8)}`);
+        }
+
         try {
             return {
                 statusCode: response.status,

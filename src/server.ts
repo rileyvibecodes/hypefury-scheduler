@@ -605,12 +605,28 @@ app.get('/', (_req: Request, res: Response) => {
         // Load clients on page load
         document.addEventListener('DOMContentLoaded', loadClients);
 
+        // Refresh clients when user comes back to this tab/page
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                loadClients();
+            }
+        });
+
+        // Also refresh on window focus (backup for older browsers)
+        window.addEventListener('focus', loadClients);
+
         async function loadClients() {
             try {
                 const response = await fetch('/api/clients');
                 const data = await response.json();
                 if (data.success) {
                     clients = data.clients;
+
+                    // Reset selection if current client no longer exists
+                    if (selectedClientId && !clients.find(c => c.id === selectedClientId)) {
+                        selectedClientId = null;
+                    }
+
                     updateDropdown();
                 }
             } catch (error) {
@@ -625,15 +641,25 @@ app.get('/', (_req: Request, res: Response) => {
             if (clients.length === 0) {
                 select.innerHTML = '<option value="">No clients - click Edit Clients to add one</option>';
                 warning.style.display = 'block';
+                selectedClientId = null;
             } else {
                 select.innerHTML = '<option value="">Choose a client...</option>';
                 clients.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
                     opt.textContent = c.name;
+                    // Preserve selection if still valid
+                    if (selectedClientId === c.id) {
+                        opt.selected = true;
+                    }
                     select.appendChild(opt);
                 });
                 warning.style.display = 'none';
+
+                // If selection was invalid, reset dropdown to "Choose a client..."
+                if (!selectedClientId) {
+                    select.value = '';
+                }
             }
         }
 

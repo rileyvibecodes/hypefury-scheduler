@@ -511,11 +511,11 @@ app.get('/', (_req: Request, res: Response) => {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
@@ -537,7 +537,7 @@ app.get('/', (_req: Request, res: Response) => {
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
         h1 { 
-            font-family: 'Instrument Serif', serif;
+            font-family: 'Inter', sans-serif;
             color: #1a1a2e; 
             margin-bottom: 8px; 
             font-size: 32px; 
@@ -564,7 +564,7 @@ app.get('/', (_req: Request, res: Response) => {
             border: 1px solid #ddd;
             border-radius: 10px;
             margin-bottom: 15px;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Inter', sans-serif;
             transition: border-color 0.2s;
         }
         input:focus, select:focus {
@@ -583,7 +583,7 @@ app.get('/', (_req: Request, res: Response) => {
             cursor: pointer;
             width: 100%;
             margin-bottom: 12px;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Inter', sans-serif;
             transition: background-color 0.2s, transform 0.1s;
         }
         button:hover { 
@@ -649,7 +649,7 @@ app.get('/', (_req: Request, res: Response) => {
 </head>
 <body>
     <div class="logo">
-        <img src="/assets/logo.png" alt="The Birdhouse" onerror="this.src='https://cdn.prod.website-files.com/67b2834c04646b6fde0fb8d0/67b3bf807b570d750c47544c_THE%20BIRDHOUSE.svg'; this.onerror=null;">
+        <img src="/assets/67b28401d861c78220c0803f_Layer_1 (1) (1).svg" alt="The Birdhouse">
     </div>
     <div class="container">
         <h1>Hypefury Scheduler</h1>
@@ -828,11 +828,11 @@ app.get('/clients', (_req: Request, res: Response) => {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             max-width: 700px;
             margin: 0 auto;
             padding: 20px;
@@ -854,7 +854,7 @@ app.get('/clients', (_req: Request, res: Response) => {
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
         h1 { 
-            font-family: 'Instrument Serif', serif;
+            font-family: 'Inter', sans-serif;
             color: #1a1a2e; 
             margin-bottom: 8px; 
             font-size: 32px; 
@@ -881,7 +881,7 @@ app.get('/clients', (_req: Request, res: Response) => {
             border: 1px solid #ddd;
             border-radius: 10px;
             margin-bottom: 12px;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Inter', sans-serif;
             transition: border-color 0.2s;
         }
         input:focus {
@@ -898,7 +898,7 @@ app.get('/clients', (_req: Request, res: Response) => {
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Inter', sans-serif;
             transition: background-color 0.2s, transform 0.1s;
         }
         button:hover { 
@@ -963,7 +963,7 @@ app.get('/clients', (_req: Request, res: Response) => {
             margin-bottom: 30px;
         }
         .add-section h2 {
-            font-family: 'Instrument Serif', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 22px;
             margin: 0 0 20px;
             color: #1a1a2e;
@@ -972,7 +972,7 @@ app.get('/clients', (_req: Request, res: Response) => {
 
         /* Client List */
         .client-list h2 {
-            font-family: 'Instrument Serif', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 22px;
             margin: 0 0 20px;
             color: #1a1a2e;
@@ -1035,7 +1035,7 @@ app.get('/clients', (_req: Request, res: Response) => {
 </head>
 <body>
     <div class="logo">
-        <img src="/assets/logo.png" alt="The Birdhouse" onerror="this.src='https://cdn.prod.website-files.com/67b2834c04646b6fde0fb8d0/67b3bf807b570d750c47544c_THE%20BIRDHOUSE.svg'; this.onerror=null;">
+        <img src="/assets/67b28401d861c78220c0803f_Layer_1 (1) (1).svg" alt="The Birdhouse">
     </div>
     <div class="container">
         <button class="btn-back" onclick="window.location.href='/'">

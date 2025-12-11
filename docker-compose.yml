@@ -1,177 +1,50 @@
-version: '3.8'
+# Hypefury Multi-Client Scheduler
+# Deploys via Hostinger VPS with Traefik
 
 services:
-  hypefury-scheduler:
-    image: node:20-slim
+  scheduler:
+    image: node:20
     container_name: hypefury-scheduler
     restart: unless-stopped
     working_dir: /app
-    ports:
-      - "3001:8080"
+    expose:
+      - "8080"
     environment:
       - NODE_ENV=production
       - PORT=8080
       - HF_API_KEY=${HF_API_KEY}
+    volumes:
+      - scheduler_data:/app/data
     command: >
       sh -c '
-        apt-get update && apt-get install -y curl &&
-        mkdir -p /app/build &&
-        cat > /app/package.json << "PKGJSON"
-      {
-        "name": "hypefury-scheduler",
-        "version": "1.1.0",
-        "type": "module",
-        "dependencies": {
-          "dotenv": "^16.4.7",
-          "express": "^4.18.2",
-          "node-fetch": "^2.7.0"
-        }
-      }
-      PKGJSON
-        cat > /app/build/utils.js << "UTILSJS"
-      import fetch from "node-fetch";
-      export const HF_BASE_URL = "https://app.hypefury.com";
-      export const HF_AUTH_ENDPOINT = HF_BASE_URL + "/api/externalApps/auth";
-      export const HF_SCHEDULE_ENDPOINT = HF_BASE_URL + "/api/externalApps/posts/save";
-      export const HF_PARTNER_KEY = "NjhiNGQ1NWItOWFjNi00MDlkLWI2MjktNjhkNTk5OTNkZWQz";
-      export function getApiKey() { return process.env.HF_API_KEY; }
-      export async function makeHfRequest(url, body) {
-        const apiKey = getApiKey();
-        if (!apiKey) { return { statusCode: 500, message: "API key missing" }; }
-        const headers = { "Authorization": "Bearer " + HF_PARTNER_KEY + ":" + apiKey, "Content-Type": "application/json" };
-        try {
-          const response = body
-            ? await fetch(url, { method: "POST", headers, body })
-            : await fetch(url, { method: "GET", headers });
-          const text = await response.text();
-          return { statusCode: response.status, message: text || null };
-        } catch (e) { return { statusCode: 500, message: e.message }; }
-      }
-      UTILSJS
-        cat > /app/build/server.js << "SERVERJS"
-      import express from "express";
-      import { makeHfRequest, HF_AUTH_ENDPOINT, HF_SCHEDULE_ENDPOINT } from "./utils.js";
-      const app = express();
-      app.use(express.json());
-      app.use((req, res, next) => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        if (req.method === "OPTIONS") return res.sendStatus(200);
-        next();
-      });
-      const PORT = process.env.PORT || 8080;
-      const HTML_FORM = \`<!DOCTYPE html>
-      <html>
-      <head>
-          <title>Hypefury Scheduler</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <style>
-              * { box-sizing: border-box; }
-              body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-              .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-              h1 { color: #333; margin-bottom: 10px; }
-              .subtitle { color: #666; margin-bottom: 25px; }
-              label { display: block; margin-bottom: 8px; font-weight: 500; color: #444; }
-              textarea { width: 100%; padding: 12px; margin-bottom: 15px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; min-height: 150px; resize: vertical; }
-              textarea:focus { outline: none; border-color: #4CAF50; }
-              button { width: 100%; padding: 15px; font-size: 16px; font-weight: 600; background: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer; }
-              button:hover { background: #45a049; }
-              button:disabled { background: #ccc; cursor: not-allowed; }
-              #result { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 14px; display: none; }
-              #result.show { display: block; }
-              #result.success { background: #d4edda; color: #155724; }
-              #result.error { background: #f8d7da; color: #721c24; }
-              .help { font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 15px; }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <h1>Hypefury Scheduler</h1>
-              <p class="subtitle">Schedule posts to your Hypefury queue</p>
-              <label for="posts">Posts (separate multiple posts with blank lines)</label>
-              <textarea id="posts" placeholder="Enter your posts here...\n\nEach paragraph becomes a separate post.\n\nYou can add multiple posts at once!"></textarea>
-              <p class="help">Tip: Press Ctrl+Enter to submit</p>
-              <button onclick="submitPosts()" id="submitBtn">Schedule Posts</button>
-              <div id="result"></div>
-          </div>
-          <script>
-              async function submitPosts() {
-                  const postsText = document.getElementById("posts").value.trim();
-                  const result = document.getElementById("result");
-                  const btn = document.getElementById("submitBtn");
-                  if (!postsText) { result.textContent = "Please enter at least one post"; result.className = "show error"; return; }
-                  const posts = postsText.split(/\\n\\n+/).map(p => p.trim()).filter(p => p.length > 0).map(text => ({ text }));
-                  if (posts.length === 0) { result.textContent = "Please enter at least one post"; result.className = "show error"; return; }
-                  btn.disabled = true; btn.textContent = "Scheduling...";
-                  result.textContent = "Sending " + posts.length + " post(s)..."; result.className = "show";
-                  try {
-                      const response = await fetch("https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content", {
-                          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ posts })
-                      });
-                      const data = await response.json();
-                      if (data.success) { result.textContent = "✓ " + data.message; result.className = "show success"; document.getElementById("posts").value = ""; }
-                      else { result.textContent = "✗ Error: " + (data.message || "Unknown error"); result.className = "show error"; }
-                  } catch (error) { result.textContent = "✗ Error: " + error.message; result.className = "show error"; }
-                  finally { btn.disabled = false; btn.textContent = "Schedule Posts"; }
-              }
-              document.getElementById("posts").addEventListener("keydown", function(e) { if (e.ctrlKey && e.key === "Enter") submitPosts(); });
-          </script>
-      </body>
-      </html>\`;
-      app.get("/", (req, res) => res.send(HTML_FORM));
-      app.get("/health", (req, res) => res.json({ status: "ok", service: "hypefury-scheduler" }));
-      app.post("/api/auth", async (req, res) => {
-        const r = await makeHfRequest(HF_AUTH_ENDPOINT);
-        if (!r) return res.status(500).json({ success: false, message: "Unable to authenticate" });
-        if (r.statusCode === 409) return res.json({ success: true, message: "Already authenticated" });
-        if (r.statusCode === 403) return res.status(403).json({ success: false, message: "Invalid API key" });
-        if (r.statusCode === 200) return res.json({ success: true, message: "Authenticated successfully" });
-        return res.status(r.statusCode || 500).json({ success: false, message: "Unexpected: " + r.statusCode });
-      });
-      app.post("/api/schedule", async (req, res) => {
-        const msg = req.body.message || req.body.text;
-        if (!msg) return res.status(400).json({ success: false, message: "Message required" });
-        const r = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify({ text: msg }));
-        if (!r) return res.status(500).json({ success: false, message: "Unable to schedule" });
-        if (r.statusCode === 200 || r.statusCode === 201) {
-          let data = null; try { data = JSON.parse(r.message); } catch(e) {}
-          return res.json({ success: true, message: "Post scheduled", data });
-        }
-        return res.status(r.statusCode || 500).json({ success: false, message: r.message });
-      });
-      app.post("/api/schedule/bulk", async (req, res) => {
-        const posts = req.body.posts;
-        if (!posts || !Array.isArray(posts)) return res.status(400).json({ success: false, message: "Posts array required" });
-        const results = []; let success = 0, fail = 0;
-        for (const post of posts) {
-          const text = post.message || post.text;
-          if (!text) { fail++; results.push({ success: false, message: "Missing text" }); continue; }
-          const r = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify({ text, time: post.scheduledTime || post.time }));
-          if (r && (r.statusCode === 200 || r.statusCode === 201)) { success++; results.push({ success: true, postId: JSON.parse(r.message).postId }); }
-          else { fail++; results.push({ success: false, message: r?.message || "Failed" }); }
-        }
-        return res.json({ success: fail === 0, message: "Scheduled " + success + "/" + posts.length + " posts", summary: { total: posts.length, success, failed: fail }, results });
-      });
-      app.get("/api/info", (req, res) => res.json({
-        name: "Hypefury Scheduler API", version: "1.1.0",
-        endpoints: [
-          { method: "GET", path: "/" },
-          { method: "GET", path: "/health" },
-          { method: "POST", path: "/api/auth" },
-          { method: "POST", path: "/api/schedule", body: { message: "string" } },
-          { method: "POST", path: "/api/schedule/bulk", body: { posts: [{ text: "string" }] } },
-          { method: "GET", path: "/api/info" }
-        ]
-      }));
-      app.listen(PORT, () => console.log("Hypefury Scheduler running on port " + PORT));
-      SERVERJS
+        apt-get update && apt-get install -y git python3 make g++ curl &&
+        git clone https://github.com/rileyvibecodes/hypefury-scheduler.git /app/repo &&
+        cd /app/repo &&
         npm install &&
-        node build/server.js
+        npm run build &&
+        mkdir -p /app/data &&
+        cd /app/repo && node build/server.js
       '
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hypefury.rule=Host(`scheduler.srv1176124.hstgr.cloud`)
+      - traefik.http.routers.hypefury.tls=true
+      - traefik.http.routers.hypefury.entrypoints=web,websecure
+      - traefik.http.routers.hypefury.tls.certresolver=mytlschallenge
+      - traefik.http.services.hypefury.loadbalancer.server.port=8080
+    networks:
+      - root_default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 120s
+
+volumes:
+  scheduler_data:
+    driver: local
+
+networks:
+  root_default:
+    external: true

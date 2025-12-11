@@ -1019,7 +1019,17 @@ app.get('/api/dashboard/operations', (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
     const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : undefined;
     const operations = getRecentOperations(limit, clientId);
-    return res.json({ success: true, operations });
+
+    // Enrich operations with client names from the clients database
+    const enrichedOperations = operations.map(op => {
+      const client = getClientById(op.client_id);
+      return {
+        ...op,
+        clientName: client?.name || `Client #${op.client_id}`
+      };
+    });
+
+    return res.json({ success: true, operations: enrichedOperations });
   } catch (error) {
     console.error('Error getting operations:', error);
     return res.status(500).json({

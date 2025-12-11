@@ -247,24 +247,28 @@ export function failOperation(operationId: number, errorMessage: string): void {
 
 /**
  * Get recent operations
+ * Note: Client names are looked up separately since clients are in a different database
  */
 export function getRecentOperations(limit: number = 20, clientId?: number): (Operation & { clientName?: string })[] {
-  let query = `
-    SELECT o.*, c.name as clientName
-    FROM operations o
-    LEFT JOIN (SELECT id, name FROM clients) c ON o.client_id = c.id
-  `;
+  let query = `SELECT * FROM operations`;
 
   if (clientId) {
-    query += ` WHERE o.client_id = ?`;
+    query += ` WHERE client_id = ?`;
   }
 
-  query += ` ORDER BY o.started_at DESC LIMIT ?`;
+  query += ` ORDER BY started_at DESC LIMIT ?`;
 
   const stmt = getOperationsDb().prepare(query);
-  return clientId
-    ? stmt.all(clientId, limit) as (Operation & { clientName?: string })[]
-    : stmt.all(limit) as (Operation & { clientName?: string })[];
+  const operations = clientId
+    ? stmt.all(clientId, limit) as Operation[]
+    : stmt.all(limit) as Operation[];
+
+  // Import getClientById dynamically to avoid circular dependency
+  // Client names will be added by the API endpoint that has access to the clients db
+  return operations.map(op => ({
+    ...op,
+    clientName: undefined // Will be enriched by caller if needed
+  }));
 }
 
 /**

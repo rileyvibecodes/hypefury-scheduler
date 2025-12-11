@@ -16,10 +16,42 @@ import {
   type ClientSafe
 } from './db/database.js';
 
+// Quality pipeline imports
+import {
+  runQualityPipeline,
+  parseDocumentIntoRawChunks,
+  type PipelineResult
+} from './pipeline/index.js';
+
+// Operations database imports
+import {
+  initializeOperationsDb,
+  createOperation,
+  updateOperationTotal,
+  completeOperation,
+  failOperation,
+  getRecentOperations,
+  createPostRecord,
+  markPostSent,
+  getSystemHealth,
+  getPostsByOperation
+} from './db/operations.js';
+
+// Queue imports
+import { addToRetryQueue, getRetryQueueStatus } from './queue/retryQueue.js';
+import { startRetryWorker, getWorkerStatus } from './queue/retryWorker.js';
+
+// Dashboard imports
+import { getDashboardHTML } from './dashboard/templates.js';
+
 dotenv.config();
 
-// Initialize the database
+// Initialize databases
 initializeDatabase();
+initializeOperationsDb();
+
+// Start retry worker
+startRetryWorker();
 
 // Google Doc URL parsing
 function extractGoogleDocId(url: string): string | null {
@@ -958,6 +990,91 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+// ============================================
+// DASHBOARD ROUTES
+// ============================================
+
+// Dashboard UI
+app.get('/dashboard', (_req: Request, res: Response) => {
+  res.send(getDashboardHTML());
+});
+
+// Dashboard API - System health
+app.get('/api/dashboard/health', (_req: Request, res: Response) => {
+  try {
+    const health = getSystemHealth();
+    return res.json({ success: true, health });
+  } catch (error) {
+    console.error('Error getting system health:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get health'
+    });
+  }
+});
+
+// Dashboard API - Recent operations
+app.get('/api/dashboard/operations', (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 20;
+    const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : undefined;
+    const operations = getRecentOperations(limit, clientId);
+    return res.json({ success: true, operations });
+  } catch (error) {
+    console.error('Error getting operations:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get operations'
+    });
+  }
+});
+
+// Dashboard API - Queue status
+app.get('/api/dashboard/queue', (_req: Request, res: Response) => {
+  try {
+    const queueStatus = getRetryQueueStatus();
+    return res.json({ success: true, queue: queueStatus });
+  } catch (error) {
+    console.error('Error getting queue status:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get queue status'
+    });
+  }
+});
+
+// Dashboard API - Worker status
+app.get('/api/dashboard/worker', (_req: Request, res: Response) => {
+  try {
+    const workerStatus = getWorkerStatus();
+    return res.json({ success: true, worker: workerStatus });
+  } catch (error) {
+    console.error('Error getting worker status:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get worker status'
+    });
+  }
+});
+
+// Dashboard API - Operation details with posts
+app.get('/api/dashboard/operation/:id', (req: Request, res: Response) => {
+  try {
+    const operationId = parseInt(req.params.id, 10);
+    if (isNaN(operationId)) {
+      return res.status(400).json({ success: false, message: 'Invalid operation ID' });
+    }
+    const posts = getPostsByOperation(operationId);
+    return res.json({ success: true, posts });
+  } catch (error) {
+    console.error('Error getting operation details:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get operation details'
+    });
+  }
+});
+
 // Authentication endpoint
 app.post('/api/auth', async (_req: Request, res: Response) => {
   try {
@@ -1181,7 +1298,12 @@ app.post('/api/schedule/bulk', async (req: Request, res: Response) => {
 });
 
 // Google Doc import endpoint - fetches, parses, and schedules posts from a Google Doc
+// Now with quality pipeline integration for auto-correction and validation
 app.post('/api/schedule/google-doc', async (req: Request, res: Response) => {
+  // Create operation record for tracking
+  const clientIdNum = req.body.clientId ? parseInt(req.body.clientId, 10) : 0;
+  let operationId: number | null = null;
+
   try {
     const { url, clientId } = req.body;
 
@@ -1206,101 +1328,164 @@ app.post('/api/schedule/google-doc', async (req: Request, res: Response) => {
       console.log(`Using API key for client: ${client.name}`);
     }
 
-    console.log('Processing Google Doc URL:', url);
+    // Create operation record
+    operationId = createOperation(clientIdNum, 'google_doc', url);
+    console.log(`[Operation ${operationId}] Processing Google Doc URL:`, url);
 
     // Extract document ID from URL
     const docId = extractGoogleDocId(url);
     if (!docId) {
+      if (operationId) failOperation(operationId, 'Invalid Google Doc URL');
       return res.status(400).json({
         success: false,
         message: 'Invalid Google Doc URL. Expected format: https://docs.google.com/document/d/YOUR_DOC_ID/...'
       });
     }
 
-    console.log('Extracted document ID:', docId);
+    console.log(`[Operation ${operationId}] Extracted document ID:`, docId);
 
     // Fetch the document content
     let content: string;
     try {
       content = await fetchGoogleDocContent(docId);
-      console.log('Fetched document content, length:', content.length);
+      console.log(`[Operation ${operationId}] Fetched document content, length:`, content.length);
     } catch (fetchError) {
-      console.error('Error fetching Google Doc:', fetchError);
+      console.error(`[Operation ${operationId}] Error fetching Google Doc:`, fetchError);
+      if (operationId) failOperation(operationId, fetchError instanceof Error ? fetchError.message : 'Failed to fetch');
       return res.status(400).json({
         success: false,
         message: fetchError instanceof Error ? fetchError.message : 'Failed to fetch Google Doc'
       });
     }
 
-    // Parse content into posts
-    const posts = parseDocumentIntoPosts(content);
-    console.log('Parsed', posts.length, 'posts from document');
+    // Parse content into raw chunks using the new pipeline parser
+    const rawPosts = parseDocumentIntoRawChunks(content);
+    console.log(`[Operation ${operationId}] Parsed ${rawPosts.length} raw chunks from document`);
 
-    if (posts.length === 0) {
+    if (rawPosts.length === 0) {
+      if (operationId) failOperation(operationId, 'No posts found in document');
       return res.status(400).json({
         success: false,
-        message: 'No posts found in the Google Doc. Make sure posts are separated by blank lines and are at least 5 characters long.'
+        message: 'No posts found in the Google Doc. Make sure posts are separated by em-dash (—) or underscore (___) lines.'
       });
     }
 
-    // Schedule each post to Hypefury
+    // Update operation with total count
+    updateOperationTotal(operationId, rawPosts.length);
+
+    // Process each post through quality pipeline
     const results: Array<{
       index: number;
       success: boolean;
       message: string;
       preview: string;
+      qualityScore?: number;
+      corrections?: string[];
     }> = [];
 
     let successCount = 0;
     let failCount = 0;
+    let correctedCount = 0;
+    let rejectedCount = 0;
 
-    for (let i = 0; i < posts.length; i++) {
-      const postContent = posts[i];
+    for (let i = 0; i < rawPosts.length; i++) {
+      const rawPost = rawPosts[i];
 
-      const postData = {
-        text: postContent
-      };
+      // Run through quality pipeline
+      const pipelineResult = runQualityPipeline(rawPost);
+      console.log(`[Operation ${operationId}] Post ${i + 1}: Quality score ${pipelineResult.qualityScore}, valid: ${pipelineResult.isValid}, corrections: ${pipelineResult.corrections.length}`);
 
-      console.log(`Scheduling post ${i + 1}/${posts.length}:`, postContent.substring(0, 50) + '...');
+      // Create post record in database
+      const postId = createPostRecord(operationId, clientIdNum, {
+        originalContent: pipelineResult.originalContent,
+        processedContent: pipelineResult.processedContent,
+        qualityScore: pipelineResult.qualityScore,
+        issues: pipelineResult.allIssues,
+        corrections: pipelineResult.corrections,
+        status: pipelineResult.isValid ? 'queued' : 'rejected'
+      });
+
+      // Track if corrections were applied
+      if (pipelineResult.corrections.length > 0) {
+        correctedCount++;
+      }
+
+      // Check if post was rejected by quality gate
+      if (!pipelineResult.isValid) {
+        rejectedCount++;
+        results.push({
+          index: i,
+          success: false,
+          message: `Quality check failed: ${pipelineResult.rejectionReason || 'Did not meet quality standards'}`,
+          preview: rawPost.substring(0, 50) + (rawPost.length > 50 ? '...' : ''),
+          qualityScore: pipelineResult.qualityScore
+        });
+        continue;
+      }
+
+      // Send to Hypefury
+      const postData = { text: pipelineResult.processedContent };
+      console.log(`[Operation ${operationId}] Scheduling post ${i + 1}/${rawPosts.length}`);
       const response = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify(postData), clientApiKey);
 
       if (response && (response.statusCode === 200 || response.statusCode === 201)) {
         successCount++;
+        markPostSent(postId, response.message || 'Success');
         results.push({
           index: i,
           success: true,
-          message: 'Added to queue',
-          preview: postContent.substring(0, 50) + (postContent.length > 50 ? '...' : '')
+          message: pipelineResult.corrections.length > 0
+            ? `Added to queue (auto-corrected: ${pipelineResult.corrections.join(', ')})`
+            : 'Added to queue',
+          preview: pipelineResult.processedContent.substring(0, 50) + (pipelineResult.processedContent.length > 50 ? '...' : ''),
+          qualityScore: pipelineResult.qualityScore,
+          corrections: pipelineResult.corrections.length > 0 ? pipelineResult.corrections : undefined
         });
       } else {
         failCount++;
+        // Add to retry queue
+        addToRetryQueue(postId, response?.message || `HTTP ${response?.statusCode || 'Unknown'}`);
         results.push({
           index: i,
           success: false,
-          message: response?.message || `HTTP ${response?.statusCode || 'Unknown'}`,
-          preview: postContent.substring(0, 50) + (postContent.length > 50 ? '...' : '')
+          message: `Queued for retry: ${response?.message || 'API error'}`,
+          preview: pipelineResult.processedContent.substring(0, 50) + (pipelineResult.processedContent.length > 50 ? '...' : ''),
+          qualityScore: pipelineResult.qualityScore
         });
       }
 
       // Small delay between requests to avoid rate limiting
-      if (i < posts.length - 1) {
+      if (i < rawPosts.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
+    // Complete operation record
+    completeOperation(operationId, {
+      successful: successCount,
+      failed: failCount,
+      corrected: correctedCount,
+      rejected: rejectedCount
+    });
+
+    // Determine overall success
+    const allSuccess = failCount === 0 && rejectedCount === 0;
+
     return res.status(200).json({
-      success: failCount === 0,
-      message: `Imported and scheduled ${successCount}/${posts.length} posts from Google Doc`,
-      posts: posts,
+      success: allSuccess,
+      message: `Processed ${rawPosts.length} posts: ${successCount} sent, ${failCount} queued for retry, ${rejectedCount} rejected`,
       summary: {
-        total: posts.length,
+        total: rawPosts.length,
         success: successCount,
-        failed: failCount
+        failed: failCount,
+        corrected: correctedCount,
+        rejected: rejectedCount
       },
       results
     });
   } catch (error) {
     console.error('Google Doc import error:', error);
+    if (operationId) failOperation(operationId, error instanceof Error ? error.message : String(error));
     return res.status(500).json({
       success: false,
       message: `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -1474,15 +1659,19 @@ app.listen(PORT, () => {
   console.log(`\n========================================`);
   console.log(`Hypefury Scheduler API running on port ${PORT}`);
   console.log(`========================================\n`);
-  console.log(`Endpoints:`);
+  console.log(`UI Pages:`);
+  console.log(`  Scheduler:       http://localhost:${PORT}/`);
+  console.log(`  Dashboard:       http://localhost:${PORT}/dashboard`);
+  console.log(`  Clients:         http://localhost:${PORT}/clients`);
+  console.log(`\nAPI Endpoints:`);
   console.log(`  Health check:    http://localhost:${PORT}/health`);
   console.log(`  API info:        http://localhost:${PORT}/api/info`);
-  console.log(`  Auth:            POST http://localhost:${PORT}/api/auth`);
   console.log(`  Schedule post:   POST http://localhost:${PORT}/api/schedule`);
   console.log(`  Bulk schedule:   POST http://localhost:${PORT}/api/schedule/bulk`);
+  console.log(`  Google Doc:      POST http://localhost:${PORT}/api/schedule/google-doc`);
   console.log(`  N8N webhook:     POST http://localhost:${PORT}/webhook/schedule-content`);
-  console.log(`\nFor N8N integration, configure your webhook to POST to:`);
-  console.log(`  http://YOUR_SERVER:${PORT}/webhook/schedule-content`);
+  console.log(`\nQuality Pipeline: ACTIVE`);
+  console.log(`Retry Worker: ACTIVE (checking every 15s)`);
   console.log(`\n`);
 });
 

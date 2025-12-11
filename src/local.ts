@@ -3,9 +3,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { makeHfRequest, HF_AUTH_ENDPOINT, HF_SCHEDULE_ENDPOINT } from './utils.js';
 
+/**
+ * Local development server for MCP Inspector testing
+ * Run with: npx @modelcontextprotocol/inspector node build/local.js
+ */
+
 const server = new McpServer({
-  name: "Hypefury MCP",
-  version: "1.1.0",
+  name: "Hypefury MCP (Local)",
+  version: "1.0.0",
 });
 
 server.tool(
@@ -146,12 +151,10 @@ server.tool(
 
       if (response && (response.statusCode === 200 || response.statusCode === 201)) {
         successCount++;
-        const preview = post.message.length > 50 ? post.message.substring(0, 50) + '...' : post.message;
-        results.push(`✓ Scheduled: "${preview}"`);
+        results.push(`✓ Post scheduled: "${post.message.substring(0, 50)}..."`);
       } else {
         failCount++;
-        const preview = post.message.length > 50 ? post.message.substring(0, 50) + '...' : post.message;
-        results.push(`✗ Failed: "${preview}" - ${response?.message || 'Unknown error'}`);
+        results.push(`✗ Failed: "${post.message.substring(0, 50)}..." - ${response?.message || 'Unknown error'}`);
       }
     }
 
@@ -166,6 +169,8 @@ server.tool(
   }
 );
 
-const transport = new StdioServerTransport();
+console.log("Starting Hypefury MCP Local Server...");
+console.log("Use with MCP Inspector: npx @modelcontextprotocol/inspector node build/local.js");
 
+const transport = new StdioServerTransport();
 server.connect(transport);

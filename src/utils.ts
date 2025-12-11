@@ -36,12 +36,12 @@ export async function makeHfRequest(url: string, body?: string) {
         "Content-Type": "application/json"
     };
 
-    console.error(`Making request to ${url}`);
-    
+    console.log(`Making request to ${url}`);
+
     try {
         let response;
         if (body) {
-            console.error('POST request with body');
+            console.log('POST request with body:', body);
             response = await fetch(url, {
                 method: 'POST',
                 headers, 
@@ -49,7 +49,7 @@ export async function makeHfRequest(url: string, body?: string) {
                 timeout: 30000
             });
         } else {
-            console.error('GET request');
+            console.log('GET request');
             response = await fetch(url, {
                 method: 'GET',
                 headers,
@@ -57,7 +57,7 @@ export async function makeHfRequest(url: string, body?: string) {
             });
         }
 
-        console.error(`Response status: ${response.status}`);
+        console.log(`Response status: ${response.status}`);
         const responseText = await response.text();
         
         try {

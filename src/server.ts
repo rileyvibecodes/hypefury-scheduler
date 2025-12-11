@@ -210,11 +210,12 @@ app.use(express.json());
 // In development, __dirname is src/, in production it's build/
 const publicPath = path.join(__dirname, 'public');
 if (fs.existsSync(publicPath)) {
-  app.use('/assets', express.static(publicPath));
+  // Serve assets from public/assets directory
+  app.use('/assets', express.static(path.join(publicPath, 'assets')));
 } else {
   // Fallback to root public directory for development
   const rootPublicPath = path.join(__dirname, '..', 'public');
-  app.use('/assets', express.static(rootPublicPath));
+  app.use('/assets', express.static(path.join(rootPublicPath, 'assets')));
 }
 
 const PORT = process.env.PORT || 8080;

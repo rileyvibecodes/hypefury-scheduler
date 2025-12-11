@@ -4,6 +4,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import {
   initializeDatabase,
   getAllClients,
@@ -206,8 +207,15 @@ const app = express();
 app.use(express.json());
 
 // Serve static files from public directory
-const publicPath = path.join(__dirname, '..', 'public');
-app.use('/assets', express.static(publicPath));
+// In development, __dirname is src/, in production it's build/
+const publicPath = path.join(__dirname, 'public');
+if (fs.existsSync(publicPath)) {
+  app.use('/assets', express.static(publicPath));
+} else {
+  // Fallback to root public directory for development
+  const rootPublicPath = path.join(__dirname, '..', 'public');
+  app.use('/assets', express.static(rootPublicPath));
+}
 
 const PORT = process.env.PORT || 8080;
 

@@ -13,6 +13,7 @@ services:
       - NODE_ENV=production
       - PORT=8080
       - HF_API_KEY=${HF_API_KEY}
+      - DATA_DIR=/app/data
     volumes:
       - scheduler_data:/app/data
     command: >

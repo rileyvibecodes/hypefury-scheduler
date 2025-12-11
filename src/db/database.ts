@@ -18,8 +18,10 @@ export interface ClientSafe {
     created_at: string;
 }
 
-// Database path - use data directory relative to project root
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Database path - use /app/data in production (Docker), or ./data locally
+const DATA_DIR = process.env.NODE_ENV === 'production'
+    ? '/app/data'
+    : path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'clients.db');
 
 let db: Database.Database | null = null;

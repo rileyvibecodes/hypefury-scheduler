@@ -73,15 +73,12 @@ async function fetchGoogleDocContent(docId: string): Promise<string> {
 }
 
 function formatPost(post: string): string {
-  // Detect if this is a THREAD (multiple major sections) or LONGFORM (one intro + list)
-  const hasMultipleSections = /\n\n\n|\bStep\s*\d|Section\s*\d/i.test(post);
-
   // Split into lines for processing
   let lines = post.split('\n');
   let result: string[] = [];
   let inList = false;
-  let lastWasListItem = false;
   let lastWasBlank = false;
+  let lastWasText = false;
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
@@ -97,19 +94,11 @@ function formatPost(post: string): string {
     const isBlank = line.trim() === '';
 
     if (isBlank) {
-      // Handle blank lines based on context
-      if (lastWasListItem && !isListItem) {
-        // After a list ends, add one blank line
-        if (!lastWasBlank) {
-          result.push('');
-          lastWasBlank = true;
-        }
-      } else if (!lastWasBlank && !inList) {
-        // Between paragraphs, allow one blank line
+      // Only add one blank line, skip consecutive blanks
+      if (!lastWasBlank) {
         result.push('');
         lastWasBlank = true;
       }
-      // Skip multiple consecutive blank lines
       continue;
     }
 
@@ -120,20 +109,20 @@ function formatPost(post: string): string {
         result.push('');
       }
       inList = true;
-      lastWasListItem = true;
+      lastWasText = false;
       // NO blank lines between list items - just add the line
       result.push(line);
       lastWasBlank = false;
     } else {
-      // Regular text
-      if (inList) {
-        // Exiting a list
-        if (!lastWasBlank) {
-          result.push('');
-        }
+      // Regular text - add blank line before if coming from list or previous text
+      if (inList && !lastWasBlank) {
+        result.push('');
         inList = false;
+      } else if (lastWasText && !lastWasBlank) {
+        // Add blank line between consecutive text paragraphs
+        result.push('');
       }
-      lastWasListItem = false;
+      lastWasText = true;
       result.push(line);
       lastWasBlank = false;
     }

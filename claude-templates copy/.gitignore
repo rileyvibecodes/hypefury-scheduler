@@ -1,0 +1,15 @@
+node_modules/
+.env
+*.log
+.DS_Store
+output/
+temp/
+uploads/
+*.json.bak
+
+# Vercel
+.vercel
+
+# Google Cloud credentials
+google-credentials.json
+service-account-key.json

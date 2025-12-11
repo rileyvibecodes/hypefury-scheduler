@@ -458,29 +458,6 @@ app.get('/', (_req: Request, res: Response) => {
         #result.error { background: #f8d7da; color: #721c24; }
         #result.info { background: #cce5ff; color: #004085; }
         .help-text { font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 15px; }
-        .tab-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 12px;
-            background: #f0f0f0;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .tab-btn:hover { background: #e0e0e0; }
-        .tab-btn.active {
-            background: white;
-            border-color: #4CAF50;
-            color: #4CAF50;
-        }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
 
         /* Client selector styles */
         .client-selector {
@@ -646,7 +623,7 @@ app.get('/', (_req: Request, res: Response) => {
 <body>
     <div class="container">
         <h1>Hypefury Scheduler</h1>
-        <p class="subtitle">Schedule posts to your Hypefury queue</p>
+        <p class="subtitle">Import posts from Google Docs to Hypefury</p>
 
         <!-- Client Selector -->
         <div class="client-selector">
@@ -664,28 +641,10 @@ app.get('/', (_req: Request, res: Response) => {
             <button type="button" class="small outline" onclick="clearClientSelection()">Change</button>
         </div>
 
-        <div class="tab-buttons">
-            <button type="button" class="tab-btn active" onclick="switchTab('manual')">Type Posts</button>
-            <button type="button" class="tab-btn" onclick="switchTab('googledoc')">Google Doc URL</button>
-        </div>
-
-        <div id="tab-manual" class="tab-content active">
-            <label for="posts">Posts (separated by blank lines)</label>
-            <textarea id="posts" placeholder="Enter your posts here...
-
-Each paragraph becomes a separate post.
-
-You can add multiple posts at once!"></textarea>
-            <p class="help-text">Separate multiple posts with blank lines</p>
-            <button onclick="submitPosts()" id="submitBtn" class="full-width">Schedule Posts</button>
-        </div>
-
-        <div id="tab-googledoc" class="tab-content">
-            <label for="docUrl">Google Doc URL</label>
-            <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/your-doc-id/edit">
-            <p class="help-text">Make sure your Google Doc is publicly shared ("Anyone with the link can view")</p>
-            <button onclick="submitGoogleDoc()" id="submitDocBtn" class="secondary full-width">Import from Google Doc</button>
-        </div>
+        <label for="docUrl">Google Doc URL</label>
+        <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/your-doc-id/edit">
+        <p class="help-text">Make sure your doc is shared as "Anyone with the link can view"</p>
+        <button onclick="submitGoogleDoc()" id="submitDocBtn" class="full-width">Import from Google Doc</button>
 
         <div id="result"></div>
     </div>
@@ -985,82 +944,6 @@ You can add multiple posts at once!"></textarea>
             }
         }
 
-        // Tab switching
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            if (tab === 'manual') {
-                document.querySelector('.tab-btn:first-child').classList.add('active');
-                document.getElementById('tab-manual').classList.add('active');
-            } else {
-                document.querySelector('.tab-btn:last-child').classList.add('active');
-                document.getElementById('tab-googledoc').classList.add('active');
-            }
-        }
-
-        // Submit posts
-        async function submitPosts() {
-            const result = document.getElementById('result');
-
-            if (!selectedClientId) {
-                result.textContent = 'Please select a client before scheduling posts';
-                result.className = 'show error';
-                return;
-            }
-
-            const postsText = document.getElementById('posts').value.trim();
-            const btn = document.getElementById('submitBtn');
-
-            if (!postsText) {
-                result.textContent = 'Please enter at least one post';
-                result.className = 'show error';
-                return;
-            }
-
-            const posts = postsText.split(/\\n\\n+/)
-                .map(p => p.trim())
-                .filter(p => p.length > 0)
-                .map(text => ({ text }));
-
-            if (posts.length === 0) {
-                result.textContent = 'Please enter at least one post';
-                result.className = 'show error';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = 'Scheduling...';
-            const clientName = clients.find(c => c.id === selectedClientId)?.name || 'Unknown';
-            result.textContent = 'Sending ' + posts.length + ' post(s) to ' + clientName + '...';
-            result.className = 'show info';
-
-            try {
-                const response = await fetch('/api/schedule/bulk', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ posts, clientId: selectedClientId })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    result.textContent = '✓ ' + data.message + ' (for ' + clientName + ')';
-                    result.className = 'show success';
-                    document.getElementById('posts').value = '';
-                } else {
-                    result.textContent = '✗ Error: ' + (data.message || 'Unknown error');
-                    result.className = 'show error';
-                }
-            } catch (error) {
-                result.textContent = '✗ Error: ' + error.message;
-                result.className = 'show error';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Schedule Posts';
-            }
-        }
-
         // Submit Google Doc
         async function submitGoogleDoc() {
             const result = document.getElementById('result');
@@ -1121,13 +1004,7 @@ You can add multiple posts at once!"></textarea>
             }
         }
 
-        // Keyboard shortcuts
-        document.getElementById('posts').addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') {
-                submitPosts();
-            }
-        });
-
+        // Keyboard shortcut - Enter to submit
         document.getElementById('docUrl').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 submitGoogleDoc();

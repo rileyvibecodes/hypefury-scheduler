@@ -17,13 +17,15 @@ services:
       - scheduler_data:/app/data
     command: >
       sh -c '
-        apt-get update && apt-get install -y git python3 make g++ curl &&
-        git clone https://github.com/rileyvibecodes/hypefury-scheduler.git /app/repo &&
+        if [ ! -d /app/repo/.git ]; then
+          apt-get update && apt-get install -y git python3 make g++ curl &&
+          git clone https://github.com/rileyvibecodes/hypefury-scheduler.git /app/repo
+        fi &&
         cd /app/repo &&
-        npm install &&
-        npm run build &&
+        npm install --include=dev &&
+        npx tsc &&
         mkdir -p /app/data &&
-        cd /app/repo && node build/server.js
+        node build/server.js
       '
     labels:
       - traefik.enable=true

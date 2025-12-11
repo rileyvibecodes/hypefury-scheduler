@@ -205,6 +205,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 
+// Serve static files from public directory
+const publicPath = path.join(__dirname, '..', 'public');
+app.use('/assets', express.static(publicPath));
+
 const PORT = process.env.PORT || 8080;
 
 // CORS middleware for N8N and external integrations
@@ -494,79 +498,150 @@ app.get('/', (_req: Request, res: Response) => {
   res.send(`<!DOCTYPE html>
 <html>
 <head>
-    <title>Hypefury Scheduler</title>
+    <title>Hypefury Scheduler - The Birdhouse</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 500px;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: #E8F4F8;
+            min-height: 100vh;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
         }
         .container {
             background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
-        h1 { color: #333; margin-bottom: 5px; font-size: 24px; }
-        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
-        label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
+        h1 { 
+            font-family: 'Instrument Serif', serif;
+            color: #1a1a2e; 
+            margin-bottom: 8px; 
+            font-size: 32px; 
+            font-weight: 400;
+            text-align: center;
+        }
+        .subtitle { 
+            color: #666; 
+            margin-bottom: 30px; 
+            font-size: 15px; 
+            text-align: center;
+        }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 500; 
+            color: #1a1a2e; 
+            font-size: 14px; 
+        }
         input, select {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             font-size: 16px;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 15px;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.2s;
         }
         input:focus, select:focus {
             outline: none;
-            border-color: #4CAF50;
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
         button {
-            padding: 14px 24px;
-            font-size: 15px;
+            padding: 16px 24px;
+            font-size: 16px;
             font-weight: 600;
-            background: #4CAF50;
+            background: #4A90E2;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             width: 100%;
             margin-bottom: 12px;
+            font-family: 'Roboto', sans-serif;
+            transition: background-color 0.2s, transform 0.1s;
         }
-        button:hover { background: #45a049; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        button:hover { 
+            background: #3a7bc8; 
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+            transform: none;
+        }
         .btn-secondary {
-            background: #2196F3;
+            background: #5B9BD5;
         }
-        .btn-secondary:hover { background: #1976D2; }
-        .help-text { font-size: 12px; color: #888; margin-top: -10px; margin-bottom: 15px; }
+        .btn-secondary:hover { 
+            background: #4a8bc4; 
+        }
+        .help-text { 
+            font-size: 12px; 
+            color: #888; 
+            margin-top: -10px; 
+            margin-bottom: 15px; 
+        }
         #result {
-            margin-top: 10px;
-            padding: 15px;
-            border-radius: 8px;
+            margin-top: 15px;
+            padding: 16px;
+            border-radius: 10px;
             font-size: 14px;
             display: none;
         }
         #result.show { display: block; }
-        #result.success { background: #d4edda; color: #155724; }
-        #result.error { background: #f8d7da; color: #721c24; }
-        #result.info { background: #e7f3ff; color: #004085; }
+        #result.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        #result.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
+        #result.info { 
+            background: #e7f3ff; 
+            color: #004085; 
+            border: 1px solid #b8daff;
+        }
         .no-clients {
             text-align: center;
-            padding: 20px;
-            background: #fff3cd;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            padding: 24px;
+            background: #fff9e6;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeaa7;
         }
-        .no-clients p { margin: 0 0 10px; color: #856404; }
+        .no-clients p { 
+            margin: 0 0 10px; 
+            color: #856404; 
+        }
     </style>
 </head>
 <body>
+    <div class="logo">
+        <img src="/assets/logo.png" alt="The Birdhouse" onerror="this.src='https://cdn.prod.website-files.com/67b2834c04646b6fde0fb8d0/67b3bf807b570d750c47544c_THE%20BIRDHOUSE.svg'; this.onerror=null;">
+    </div>
     <div class="container">
         <h1>Hypefury Scheduler</h1>
         <p class="subtitle">Import posts from Google Docs to Hypefury</p>
@@ -740,56 +815,103 @@ app.get('/clients', (_req: Request, res: Response) => {
   res.send(`<!DOCTYPE html>
 <html>
 <head>
-    <title>Manage Clients - Hypefury Scheduler</title>
+    <title>Manage Clients - The Birdhouse</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 600px;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 700px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: #E8F4F8;
+            min-height: 100vh;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
         }
         .container {
             background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
-        h1 { color: #333; margin-bottom: 5px; font-size: 24px; }
-        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
-        label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
+        h1 { 
+            font-family: 'Instrument Serif', serif;
+            color: #1a1a2e; 
+            margin-bottom: 8px; 
+            font-size: 32px; 
+            font-weight: 400;
+            text-align: center;
+        }
+        .subtitle { 
+            color: #666; 
+            margin-bottom: 30px; 
+            font-size: 15px; 
+            text-align: center;
+        }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 500; 
+            color: #1a1a2e; 
+            font-size: 14px; 
+        }
         input {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             font-size: 16px;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 12px;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.2s;
         }
         input:focus {
             outline: none;
-            border-color: #4CAF50;
+            border-color: #4A90E2;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
         button {
-            padding: 14px 24px;
-            font-size: 15px;
+            padding: 16px 24px;
+            font-size: 16px;
             font-weight: 600;
-            background: #4CAF50;
+            background: #4A90E2;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            transition: background-color 0.2s, transform 0.1s;
         }
-        button:hover { background: #45a049; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        button:hover { 
+            background: #3a7bc8; 
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+            transform: none;
+        }
         .btn-back {
             background: #6c757d;
             width: 100%;
             margin-bottom: 25px;
         }
-        .btn-back:hover { background: #5a6268; }
+        .btn-back:hover { 
+            background: #5a6268; 
+        }
         .btn-add {
             width: 100%;
             margin-bottom: 20px;
@@ -799,77 +921,113 @@ app.get('/clients', (_req: Request, res: Response) => {
             padding: 10px 20px;
             font-size: 14px;
         }
-        .btn-delete:hover { background: #c82333; }
+        .btn-delete:hover { 
+            background: #c82333; 
+        }
         .btn-test {
-            background: #17a2b8;
+            background: #5B9BD5;
             padding: 10px 20px;
             font-size: 14px;
             margin-right: 8px;
         }
-        .btn-test:hover { background: #138496; }
-        .btn-test.valid { background: #28a745; }
-        .btn-test.invalid { background: #dc3545; }
-        .help-text { font-size: 12px; color: #888; margin-top: -8px; margin-bottom: 15px; }
+        .btn-test:hover { 
+            background: #4a8bc4; 
+        }
+        .btn-test.valid { 
+            background: #28a745; 
+        }
+        .btn-test.invalid { 
+            background: #dc3545; 
+        }
+        .help-text { 
+            font-size: 12px; 
+            color: #888; 
+            margin-top: -8px; 
+            margin-bottom: 15px; 
+        }
 
         /* Add Client Section */
         .add-section {
             background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 25px;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 30px;
         }
         .add-section h2 {
-            font-size: 18px;
-            margin: 0 0 15px;
-            color: #333;
+            font-family: 'Instrument Serif', serif;
+            font-size: 22px;
+            margin: 0 0 20px;
+            color: #1a1a2e;
+            font-weight: 400;
         }
 
         /* Client List */
         .client-list h2 {
-            font-size: 18px;
-            margin: 0 0 15px;
-            color: #333;
+            font-family: 'Instrument Serif', serif;
+            font-size: 22px;
+            margin: 0 0 20px;
+            color: #1a1a2e;
+            font-weight: 400;
         }
         .client-card {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 18px;
+            padding: 18px 20px;
             background: #f8f9fa;
-            border-radius: 10px;
-            margin-bottom: 10px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: box-shadow 0.2s;
         }
-        .client-card:last-child { margin-bottom: 0; }
+        .client-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .client-card:last-child { 
+            margin-bottom: 0; 
+        }
         .client-name {
             font-weight: 600;
             font-size: 16px;
-            color: #333;
+            color: #1a1a2e;
         }
         .client-key {
             font-size: 12px;
             color: #888;
-            margin-top: 4px;
+            margin-top: 6px;
         }
         .no-clients {
             text-align: center;
-            padding: 30px;
+            padding: 40px;
             color: #888;
         }
 
         /* Message */
         .message {
-            padding: 12px 15px;
-            border-radius: 8px;
+            padding: 14px 18px;
+            border-radius: 10px;
             margin-bottom: 20px;
             font-size: 14px;
             display: none;
         }
-        .message.show { display: block; }
-        .message.success { background: #d4edda; color: #155724; }
-        .message.error { background: #f8d7da; color: #721c24; }
+        .message.show { 
+            display: block; 
+        }
+        .message.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        .message.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
+    <div class="logo">
+        <img src="/assets/logo.png" alt="The Birdhouse" onerror="this.src='https://cdn.prod.website-files.com/67b2834c04646b6fde0fb8d0/67b3bf807b570d750c47544c_THE%20BIRDHOUSE.svg'; this.onerror=null;">
+    </div>
     <div class="container">
         <button class="btn-back" onclick="window.location.href='/'">
             ← Back to Scheduler

@@ -175,12 +175,18 @@ export function deleteClient(id: number): boolean {
 }
 
 /**
- * Mask an API key for safe display (show first 6 characters)
+ * Mask an API key for safe display (show first 6 characters, or first 2 for short keys)
  */
 export function maskApiKey(apiKey: string): string {
-    if (apiKey.length <= 6) {
-        return apiKey.substring(0, apiKey.length) + '••••••';
+    if (apiKey.length <= 2) {
+        // Fully mask very short keys
+        return '••••••';
     }
+    if (apiKey.length <= 6) {
+        // For short keys, show only first 2 characters
+        return apiKey.substring(0, 2) + '••••••';
+    }
+    // For longer keys, show first 6 characters
     return apiKey.substring(0, 6) + '••••••';
 }
 

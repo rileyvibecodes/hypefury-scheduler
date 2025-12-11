@@ -375,7 +375,7 @@ app.post('/api/clients/:id/validate', async (req: Request, res: Response) => {
 });
 
 // ============================================
-// MAIN UI
+// MAIN UI - Simple scheduler page
 // ============================================
 
 // Serve the scheduler form at root
@@ -409,6 +409,7 @@ app.get('/', (_req: Request, res: Response) => {
             font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 8px;
+            margin-bottom: 15px;
         }
         input:focus, select:focus {
             outline: none;
@@ -424,25 +425,17 @@ app.get('/', (_req: Request, res: Response) => {
             border-radius: 8px;
             cursor: pointer;
             width: 100%;
+            margin-bottom: 12px;
         }
         button:hover { background: #45a049; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-        button.small {
-            padding: 8px 16px;
-            font-size: 13px;
-            width: auto;
+        .btn-secondary {
+            background: #2196F3;
         }
-        button.outline {
-            background: white;
-            color: #666;
-            border: 1px solid #ddd;
-        }
-        button.outline:hover { background: #f9f9f9; }
-        button.danger { background: #dc3545; }
-        button.danger:hover { background: #c82333; }
-        .help-text { font-size: 12px; color: #888; margin-top: 6px; }
+        .btn-secondary:hover { background: #1976D2; }
+        .help-text { font-size: 12px; color: #888; margin-top: -10px; margin-bottom: 15px; }
         #result {
-            margin-top: 20px;
+            margin-top: 10px;
             padding: 15px;
             border-radius: 8px;
             font-size: 14px;
@@ -452,76 +445,14 @@ app.get('/', (_req: Request, res: Response) => {
         #result.success { background: #d4edda; color: #155724; }
         #result.error { background: #f8d7da; color: #721c24; }
         #result.info { background: #e7f3ff; color: #004085; }
-
-        /* Section spacing */
-        .section { margin-bottom: 20px; }
-
-        /* Client dropdown with edit link */
-        .client-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 6px;
-        }
-        .client-row select { margin-bottom: 0; flex: 1; }
-        .edit-link {
-            font-size: 13px;
-            color: #666;
-            text-decoration: none;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .edit-link:hover { color: #333; text-decoration: underline; }
-
-        /* Add client inline form */
-        .add-client-form {
-            display: none;
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-        }
-        .add-client-form.show { display: block; }
-        .add-client-form input { margin-bottom: 10px; }
-        .add-client-form .btn-row {
-            display: flex;
-            gap: 10px;
-        }
-        .add-client-form .btn-row button { flex: 1; }
-
-        /* Client list (edit mode) */
-        .client-list {
-            display: none;
-            margin-top: 10px;
-        }
-        .client-list.show { display: block; }
-        .client-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-        .client-item:last-child { margin-bottom: 0; }
-        .client-item-name { font-weight: 500; font-size: 14px; }
-        .client-item-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .client-item-actions button { padding: 6px 12px; font-size: 12px; }
-        .done-editing {
-            margin-top: 12px;
+        .no-clients {
             text-align: center;
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 8px;
+            margin-bottom: 15px;
         }
-        .done-editing a {
-            font-size: 13px;
-            color: #4CAF50;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .done-editing a:hover { text-decoration: underline; }
+        .no-clients p { margin: 0 0 10px; color: #856404; }
     </style>
 </head>
 <body>
@@ -529,37 +460,27 @@ app.get('/', (_req: Request, res: Response) => {
         <h1>Hypefury Scheduler</h1>
         <p class="subtitle">Import posts from Google Docs to Hypefury</p>
 
-        <!-- Client Selection -->
-        <div class="section">
-            <label>Client</label>
-            <div class="client-row">
-                <select id="clientSelect">
-                    <option value="">Choose a client...</option>
-                </select>
-                <a class="edit-link" onclick="toggleEditMode()">edit</a>
-            </div>
-
-            <!-- Inline Add Client Form -->
-            <div id="addClientForm" class="add-client-form">
-                <input type="text" id="newClientName" placeholder="Client name (e.g. Acme Corp)">
-                <input type="text" id="newClientKey" placeholder="Hypefury API key">
-                <div class="btn-row">
-                    <button onclick="saveNewClient()">Save Client</button>
-                    <button class="outline" onclick="cancelAddClient()">Cancel</button>
-                </div>
-                <p class="help-text" style="margin-top: 10px;">Find API key: Hypefury → Settings → Integrations → API Access</p>
-            </div>
-
-            <!-- Client List (Edit Mode) -->
-            <div id="clientList" class="client-list"></div>
+        <!-- No Clients Warning (shown when no clients exist) -->
+        <div id="noClientsWarning" class="no-clients" style="display:none;">
+            <p><strong>No clients set up yet!</strong></p>
+            <p>Add your first client to get started.</p>
         </div>
+
+        <!-- Client Selection -->
+        <label for="clientSelect">Select Client</label>
+        <select id="clientSelect">
+            <option value="">Loading clients...</option>
+        </select>
+
+        <!-- Big Edit Clients Button -->
+        <button class="btn-secondary" onclick="window.location.href='/clients'">
+            Edit Clients
+        </button>
 
         <!-- Google Doc URL -->
-        <div class="section">
-            <label for="docUrl">Google Doc URL</label>
-            <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/...">
-            <p class="help-text">Doc must be shared as "Anyone with the link can view"</p>
-        </div>
+        <label for="docUrl">Google Doc URL</label>
+        <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/...">
+        <p class="help-text">Doc must be shared as "Anyone with the link can view"</p>
 
         <button onclick="submitGoogleDoc()" id="submitBtn">Import & Schedule Posts</button>
 
@@ -569,7 +490,6 @@ app.get('/', (_req: Request, res: Response) => {
     <script>
         let selectedClientId = null;
         let clients = [];
-        let editMode = false;
 
         // Load clients on page load
         document.addEventListener('DOMContentLoaded', loadClients);
@@ -581,7 +501,6 @@ app.get('/', (_req: Request, res: Response) => {
                 if (data.success) {
                     clients = data.clients;
                     updateDropdown();
-                    updateClientList();
                 }
             } catch (error) {
                 console.error('Error loading clients:', error);
@@ -590,144 +509,27 @@ app.get('/', (_req: Request, res: Response) => {
 
         function updateDropdown() {
             const select = document.getElementById('clientSelect');
-            const currentValue = select.value;
+            const warning = document.getElementById('noClientsWarning');
 
-            select.innerHTML = '<option value="">Choose a client...</option>';
-            clients.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name;
-                select.appendChild(opt);
-            });
-            select.innerHTML += '<option value="__add__">+ Add new client</option>';
-
-            if (currentValue && currentValue !== '__add__' && clients.some(c => c.id == currentValue)) {
-                select.value = currentValue;
-            }
-        }
-
-        function updateClientList() {
-            const listEl = document.getElementById('clientList');
             if (clients.length === 0) {
-                listEl.innerHTML = '<p style="color:#888;font-size:13px;">No clients yet</p>';
-                return;
+                select.innerHTML = '<option value="">No clients - click Edit Clients to add one</option>';
+                warning.style.display = 'block';
+            } else {
+                select.innerHTML = '<option value="">Choose a client...</option>';
+                clients.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name;
+                    select.appendChild(opt);
+                });
+                warning.style.display = 'none';
             }
-            listEl.innerHTML = clients.map(c => \`
-                <div class="client-item">
-                    <span class="client-item-name">\${esc(c.name)}</span>
-                    <div class="client-item-actions">
-                        <button class="small outline" onclick="deleteClientConfirm(\${c.id}, '\${esc(c.name)}')">Delete</button>
-                    </div>
-                </div>
-            \`).join('') + '<div class="done-editing"><a onclick="toggleEditMode()">Done editing</a></div>';
-        }
-
-        function esc(t) {
-            const d = document.createElement('div');
-            d.textContent = t;
-            return d.innerHTML;
         }
 
         // Dropdown change handler
         document.getElementById('clientSelect').addEventListener('change', function() {
-            if (this.value === '__add__') {
-                this.value = '';
-                showAddForm();
-            } else {
-                selectedClientId = this.value ? parseInt(this.value) : null;
-                hideAddForm();
-                hideEditMode();
-            }
+            selectedClientId = this.value ? parseInt(this.value) : null;
         });
-
-        function showAddForm() {
-            document.getElementById('addClientForm').classList.add('show');
-            document.getElementById('newClientName').focus();
-            hideEditMode();
-        }
-
-        function hideAddForm() {
-            document.getElementById('addClientForm').classList.remove('show');
-            document.getElementById('newClientName').value = '';
-            document.getElementById('newClientKey').value = '';
-        }
-
-        function cancelAddClient() {
-            hideAddForm();
-        }
-
-        async function saveNewClient() {
-            const name = document.getElementById('newClientName').value.trim();
-            const apiKey = document.getElementById('newClientKey').value.trim();
-            const result = document.getElementById('result');
-
-            if (!name || !apiKey) {
-                result.textContent = 'Please enter both client name and API key';
-                result.className = 'show error';
-                return;
-            }
-
-            try {
-                const resp = await fetch('/api/clients', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, apiKey })
-                });
-                const data = await resp.json();
-
-                if (data.success) {
-                    await loadClients();
-                    hideAddForm();
-                    // Auto-select the new client
-                    document.getElementById('clientSelect').value = data.client.id;
-                    selectedClientId = data.client.id;
-                    result.textContent = 'Client "' + name + '" added!';
-                    result.className = 'show success';
-                    setTimeout(() => result.className = '', 3000);
-                } else {
-                    result.textContent = data.message;
-                    result.className = 'show error';
-                }
-            } catch (e) {
-                result.textContent = 'Error: ' + e.message;
-                result.className = 'show error';
-            }
-        }
-
-        function toggleEditMode() {
-            editMode = !editMode;
-            const list = document.getElementById('clientList');
-            if (editMode) {
-                list.classList.add('show');
-                hideAddForm();
-            } else {
-                list.classList.remove('show');
-            }
-        }
-
-        function hideEditMode() {
-            editMode = false;
-            document.getElementById('clientList').classList.remove('show');
-        }
-
-        function deleteClientConfirm(id, name) {
-            if (confirm('Delete "' + name + '"? This cannot be undone.')) {
-                deleteClient(id);
-            }
-        }
-
-        async function deleteClient(id) {
-            try {
-                await fetch('/api/clients/' + id, { method: 'DELETE' });
-                if (selectedClientId === id) {
-                    selectedClientId = null;
-                    document.getElementById('clientSelect').value = '';
-                }
-                await loadClients();
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
 
         // Submit Google Doc
         async function submitGoogleDoc() {
@@ -768,15 +570,15 @@ app.get('/', (_req: Request, res: Response) => {
                 const data = await resp.json();
 
                 if (data.success) {
-                    result.textContent = '✓ ' + data.message;
+                    result.textContent = data.message;
                     result.className = 'show success';
                     document.getElementById('docUrl').value = '';
                 } else {
-                    result.textContent = '✗ ' + (data.message || 'Unknown error');
+                    result.textContent = data.message || 'Unknown error';
                     result.className = 'show error';
                 }
             } catch (e) {
-                result.textContent = '✗ ' + e.message;
+                result.textContent = e.message;
                 result.className = 'show error';
             } finally {
                 btn.disabled = false;
@@ -787,6 +589,282 @@ app.get('/', (_req: Request, res: Response) => {
         // Enter to submit
         document.getElementById('docUrl').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') submitGoogleDoc();
+        });
+    </script>
+</body>
+</html>`);
+});
+
+// ============================================
+// CLIENT MANAGEMENT PAGE - Separate page
+// ============================================
+
+app.get('/clients', (_req: Request, res: Response) => {
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Clients - Hypefury Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 5px; font-size: 24px; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            padding: 14px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-back {
+            background: #6c757d;
+            width: 100%;
+            margin-bottom: 25px;
+        }
+        .btn-back:hover { background: #5a6268; }
+        .btn-add {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .btn-delete {
+            background: #dc3545;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        .btn-delete:hover { background: #c82333; }
+        .help-text { font-size: 12px; color: #888; margin-top: -8px; margin-bottom: 15px; }
+
+        /* Add Client Section */
+        .add-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        .add-section h2 {
+            font-size: 18px;
+            margin: 0 0 15px;
+            color: #333;
+        }
+
+        /* Client List */
+        .client-list h2 {
+            font-size: 18px;
+            margin: 0 0 15px;
+            color: #333;
+        }
+        .client-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 18px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .client-card:last-child { margin-bottom: 0; }
+        .client-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+        .client-key {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .no-clients {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+        }
+
+        /* Message */
+        .message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        .message.show { display: block; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="btn-back" onclick="window.location.href='/'">
+            ← Back to Scheduler
+        </button>
+
+        <h1>Manage Clients</h1>
+        <p class="subtitle">Add, edit, or remove client accounts</p>
+
+        <div id="message" class="message"></div>
+
+        <!-- Add New Client Section -->
+        <div class="add-section">
+            <h2>Add New Client</h2>
+            <label for="clientName">Client Name</label>
+            <input type="text" id="clientName" placeholder="e.g. Acme Corp">
+
+            <label for="apiKey">Hypefury API Key</label>
+            <input type="text" id="apiKey" placeholder="Paste API key here">
+            <p class="help-text">Find it: Hypefury → Settings → Integrations → API Access</p>
+
+            <button class="btn-add" onclick="addClient()">Add Client</button>
+        </div>
+
+        <!-- Existing Clients -->
+        <div class="client-list">
+            <h2>Your Clients</h2>
+            <div id="clientsContainer">
+                <div class="no-clients">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let clients = [];
+
+        // Load clients on page load
+        document.addEventListener('DOMContentLoaded', loadClients);
+
+        async function loadClients() {
+            try {
+                const response = await fetch('/api/clients');
+                const data = await response.json();
+                if (data.success) {
+                    clients = data.clients;
+                    renderClients();
+                }
+            } catch (error) {
+                console.error('Error loading clients:', error);
+                showMessage('Failed to load clients', 'error');
+            }
+        }
+
+        function renderClients() {
+            const container = document.getElementById('clientsContainer');
+
+            if (clients.length === 0) {
+                container.innerHTML = '<div class="no-clients">No clients yet. Add your first client above!</div>';
+                return;
+            }
+
+            container.innerHTML = clients.map(c => \`
+                <div class="client-card">
+                    <div>
+                        <div class="client-name">\${esc(c.name)}</div>
+                        <div class="client-key">API Key: \${c.apiKeyMasked || '••••••••'}</div>
+                    </div>
+                    <button class="btn-delete" onclick="deleteClient(\${c.id}, '\${esc(c.name)}')">Delete</button>
+                </div>
+            \`).join('');
+        }
+
+        function esc(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message show ' + type;
+            setTimeout(() => msg.className = 'message', 4000);
+        }
+
+        async function addClient() {
+            const name = document.getElementById('clientName').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            if (!name) {
+                showMessage('Please enter a client name', 'error');
+                return;
+            }
+            if (!apiKey) {
+                showMessage('Please enter an API key', 'error');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/clients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, apiKey })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    document.getElementById('clientName').value = '';
+                    document.getElementById('apiKey').value = '';
+                    showMessage('Client "' + name + '" added successfully!', 'success');
+                    await loadClients();
+                } else {
+                    showMessage(data.message || 'Failed to add client', 'error');
+                }
+            } catch (e) {
+                showMessage('Error: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteClient(id, name) {
+            if (!confirm('Delete "' + name + '"?\\n\\nThis cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/clients/' + id, { method: 'DELETE' });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showMessage('Client "' + name + '" deleted', 'success');
+                    await loadClients();
+                } else {
+                    showMessage(data.message || 'Failed to delete client', 'error');
+                }
+            } catch (e) {
+                showMessage('Error: ' + e.message, 'error');
+            }
+        }
+
+        // Enter to add
+        document.getElementById('apiKey').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') addClient();
         });
     </script>
 </body>

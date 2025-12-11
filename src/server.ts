@@ -72,6 +72,76 @@ async function fetchGoogleDocContent(docId: string): Promise<string> {
   return text;
 }
 
+function formatPost(post: string): string {
+  // Detect if this is a THREAD (multiple major sections) or LONGFORM (one intro + list)
+  const hasMultipleSections = /\n\n\n|\bStep\s*\d|Section\s*\d/i.test(post);
+
+  // Split into lines for processing
+  let lines = post.split('\n');
+  let result: string[] = [];
+  let inList = false;
+  let lastWasListItem = false;
+  let lastWasBlank = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    // Check if this line is a list item (bullet or numbered)
+    const isListItem = /^[\s]*[•\*\-✓✗xX→][\s]/.test(line) || /^[\s]*\d+[.\)]\s/.test(line);
+
+    // Remove indentation from list items - make flush left
+    if (isListItem) {
+      line = line.replace(/^[\s]+/, '');
+    }
+
+    const isBlank = line.trim() === '';
+
+    if (isBlank) {
+      // Handle blank lines based on context
+      if (lastWasListItem && !isListItem) {
+        // After a list ends, add one blank line
+        if (!lastWasBlank) {
+          result.push('');
+          lastWasBlank = true;
+        }
+      } else if (!lastWasBlank && !inList) {
+        // Between paragraphs, allow one blank line
+        result.push('');
+        lastWasBlank = true;
+      }
+      // Skip multiple consecutive blank lines
+      continue;
+    }
+
+    // For list items
+    if (isListItem) {
+      if (!inList && result.length > 0 && !lastWasBlank) {
+        // Add one blank line before first list item
+        result.push('');
+      }
+      inList = true;
+      lastWasListItem = true;
+      // NO blank lines between list items - just add the line
+      result.push(line);
+      lastWasBlank = false;
+    } else {
+      // Regular text
+      if (inList) {
+        // Exiting a list
+        if (!lastWasBlank) {
+          result.push('');
+        }
+        inList = false;
+      }
+      lastWasListItem = false;
+      result.push(line);
+      lastWasBlank = false;
+    }
+  }
+
+  return result.join('\n').trim();
+}
+
 function parseDocumentIntoPosts(content: string): string[] {
   // Normalize line endings
   let text = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
@@ -98,8 +168,8 @@ function parseDocumentIntoPosts(content: string): string[] {
       // Convert * bullets to •
       post = post.replace(/^\* /gm, '• ');
 
-      // Clean up excessive blank lines (more than 2 newlines -> 2)
-      post = post.replace(/\n{3,}/g, '\n\n');
+      // Apply proper formatting
+      post = formatPost(post);
 
       return post.trim();
     })

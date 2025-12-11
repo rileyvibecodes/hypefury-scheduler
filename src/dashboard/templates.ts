@@ -20,6 +20,34 @@ export function getDashboardHTML(): string {
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 
+        /* Navigation Bar */
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .nav-bar a {
+            padding: 10px 20px;
+            text-decoration: none;
+            color: #4CAF50;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .nav-bar a:hover {
+            background: rgba(76, 175, 80, 0.1);
+        }
+        .nav-bar a.active {
+            background: #4CAF50;
+            color: white;
+        }
+
         /* Header */
         .header {
             display: flex;
@@ -30,13 +58,6 @@ export function getDashboardHTML(): string {
             gap: 12px;
         }
         .header h1 { font-size: 24px; color: #1a1a2e; }
-        .nav-links a {
-            margin-left: 16px;
-            color: #4a4a6a;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .nav-links a:hover { color: #4CAF50; }
 
         /* Health Status Card */
         .health-card {
@@ -199,7 +220,42 @@ export function getDashboardHTML(): string {
             padding: 4px 10px;
             font-size: 12px;
         }
+        .btn-retry {
+            background: #FFC107;
+            color: #333;
+            padding: 4px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-retry:hover { background: #e0a800; }
+        .btn-retry:disabled { background: #ccc; cursor: not-allowed; color: #666; }
+        .btn-retry.loading { background: #ccc; }
         .last-updated { font-size: 12px; color: #888; margin-left: 12px; }
+
+        /* Error display with fix action */
+        .error-box {
+            background: #fff3f3;
+            border: 1px solid #f8d7da;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        .error-box .error-title {
+            font-weight: 600;
+            color: #721c24;
+            margin-bottom: 4px;
+        }
+        .error-box .error-fix {
+            font-size: 13px;
+            color: #856404;
+            background: #fff9e6;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
 
         /* Tabs */
         .tabs {
@@ -287,12 +343,14 @@ export function getDashboardHTML(): string {
 </head>
 <body>
     <div class="container">
+        <nav class="nav-bar">
+            <a href="/">Scheduler</a>
+            <a href="/clients">Clients</a>
+            <a href="/dashboard" class="active">Dashboard</a>
+        </nav>
+
         <div class="header">
             <h1>System Dashboard</h1>
-            <div class="nav-links">
-                <a href="/">Scheduler</a>
-                <a href="/clients">Clients</a>
-            </div>
         </div>
 
         <!-- Health Status -->
@@ -384,10 +442,11 @@ export function getDashboardHTML(): string {
                         <th>Status</th>
                         <th>Quality</th>
                         <th>Error</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="logsBody">
-                    <tr><td colspan="6" class="loading">Loading...</td></tr>
+                    <tr><td colspan="7" class="loading">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -560,12 +619,12 @@ export function getDashboardHTML(): string {
                 const tbody = document.getElementById('logsBody');
 
                 if (!data.success) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load logs</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load logs</td></tr>';
                     return;
                 }
 
                 if (!data.logs || data.logs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">' +
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' +
                         (failedOnly ? 'No failed posts. All good!' : 'No posts yet.') + '</td></tr>';
                     return;
                 }
@@ -576,7 +635,8 @@ export function getDashboardHTML(): string {
                     const qualityClass = log.quality_score >= 80 ? 'quality-high' :
                                         log.quality_score >= 50 ? 'quality-medium' : 'quality-low';
 
-                    const hasError = log.status === 'failed' || log.status === 'permanently_failed' || log.status === 'rejected';
+                    const canRetry = log.status === 'failed' || log.status === 'permanently_failed';
+                    const hasError = canRetry || log.status === 'rejected';
                     const errorText = log.hypefury_response || 'No error details';
                     const preview = log.processed_content ? log.processed_content.substring(0, 150) + (log.processed_content.length > 150 ? '...' : '') : '';
 
@@ -596,19 +656,33 @@ export function getDashboardHTML(): string {
                         '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
                             (hasError ? esc(errorText.substring(0, 50)) : '<span style="color:#28a745">OK</span>') +
                         '</td>' +
+                        '<td onclick="event.stopPropagation()">' +
+                            (canRetry
+                                ? '<button class="btn-retry" id="retry-btn-' + log.id + '" onclick="retryPost(' + log.id + ')">Retry</button>'
+                                : (log.status === 'sent' ? '<span style="color:#28a745;font-size:12px;">Sent</span>' : '-')) +
+                        '</td>' +
                     '</tr>';
 
                     const detailsRow = '<tr class="details-row" id="details-' + idx + '">' +
-                        '<td colspan="6" class="details-cell">' +
+                        '<td colspan="7" class="details-cell">' +
                             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
                                 '<div>' +
                                     '<strong>Post Content:</strong>' +
                                     '<div class="post-preview">' + esc(preview) + '</div>' +
                                 '</div>' +
                                 '<div>' +
-                                    (hasError ? '<strong>Error Details:</strong><div class="error-message">' + esc(errorText) + '</div>' : '') +
-                                    (log.correctionsParsed && log.correctionsParsed.length > 0 ?
-                                        '<strong style="margin-top:12px;display:block;">Corrections Applied:</strong><div class="post-preview">' + esc(log.correctionsParsed.join(', ')) + '</div>' : '') +
+                                    (hasError
+                                        ? '<div class="error-box">' +
+                                            '<div class="error-title">What failed:</div>' +
+                                            '<div>' + esc(errorText) + '</div>' +
+                                          '</div>'
+                                        : '') +
+                                    (log.correctionsParsed && log.correctionsParsed.length > 0
+                                        ? '<strong style="margin-top:12px;display:block;">Corrections Applied:</strong><div class="post-preview">' + esc(log.correctionsParsed.join(', ')) + '</div>'
+                                        : '') +
+                                    (canRetry
+                                        ? '<div style="margin-top:12px;"><button class="btn-retry" onclick="retryPost(' + log.id + ')">Retry This Post</button></div>'
+                                        : '') +
                                 '</div>' +
                             '</div>' +
                         '</td>' +
@@ -619,7 +693,7 @@ export function getDashboardHTML(): string {
             } catch (e) {
                 console.error('Failed to load logs:', e);
                 document.getElementById('logsBody').innerHTML =
-                    '<tr><td colspan="6" class="empty-state">Error loading logs</td></tr>';
+                    '<tr><td colspan="7" class="empty-state">Error loading logs</td></tr>';
             }
         }
 
@@ -642,18 +716,103 @@ export function getDashboardHTML(): string {
             loadLogs();
         }
 
-        function formatTime(isoString) {
-            if (!isoString) return '--';
-            const date = new Date(isoString);
-            const now = new Date();
-            const diff = now - date;
-
-            if (diff < 24 * 60 * 60 * 1000) {
-                if (diff < 60 * 1000) return 'Just now';
-                if (diff < 60 * 60 * 1000) return Math.floor(diff / 60000) + 'm ago';
-                return Math.floor(diff / 3600000) + 'h ago';
+        async function retryPost(postId) {
+            const btn = document.getElementById('retry-btn-' + postId);
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Retrying...';
+                btn.classList.add('loading');
             }
 
+            try {
+                const resp = await fetch('/api/posts/' + postId + '/retry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    // Show success and refresh
+                    if (btn) {
+                        btn.textContent = 'Sent!';
+                        btn.style.background = '#28a745';
+                        btn.style.color = 'white';
+                    }
+                    // Refresh after short delay
+                    setTimeout(() => {
+                        refreshDashboard();
+                    }, 1000);
+                } else {
+                    // Show error
+                    const errorMsg = data.error?.message || 'Retry failed';
+                    const fixAction = data.error?.fixAction || '';
+                    alert('Retry failed: ' + errorMsg + (fixAction ? '\\n\\nHow to fix: ' + fixAction : ''));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'Retry';
+                        btn.classList.remove('loading');
+                    }
+                }
+            } catch (e) {
+                console.error('Retry error:', e);
+                alert('Failed to retry post. Please try again.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Retry';
+                    btn.classList.remove('loading');
+                }
+            }
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '--';
+
+            // Handle SQLite timestamp format (YYYY-MM-DD HH:MM:SS)
+            // Add 'Z' to treat as UTC if no timezone indicator
+            let dateStr = isoString;
+            if (!dateStr.includes('T') && !dateStr.includes('Z')) {
+                dateStr = dateStr.replace(' ', 'T') + 'Z';
+            }
+
+            const date = new Date(dateStr);
+
+            // Check for invalid date
+            if (isNaN(date.getTime())) {
+                return isoString; // Return original string if can't parse
+            }
+
+            const now = new Date();
+            const diff = now.getTime() - date.getTime();
+
+            // Handle future dates (shouldn't happen, but just in case)
+            if (diff < 0) {
+                return 'Scheduled';
+            }
+
+            // Less than 1 minute ago
+            if (diff < 60 * 1000) {
+                return 'Just now';
+            }
+
+            // Less than 1 hour ago
+            if (diff < 60 * 60 * 1000) {
+                const mins = Math.floor(diff / 60000);
+                return mins + 'm ago';
+            }
+
+            // Less than 24 hours ago
+            if (diff < 24 * 60 * 60 * 1000) {
+                const hours = Math.floor(diff / 3600000);
+                return hours + 'h ago';
+            }
+
+            // Less than 7 days ago
+            if (diff < 7 * 24 * 60 * 60 * 1000) {
+                const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+                return days + 'd ago';
+            }
+
+            // Show full date for older items
             return date.toLocaleDateString();
         }
 

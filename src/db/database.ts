@@ -38,6 +38,10 @@ export function initializeDatabase(): void {
 
     // Open database connection
     db = new Database(DB_PATH);
+
+    // Enable foreign key constraints
+    db.exec('PRAGMA foreign_keys = ON;');
+
     console.log(`Database initialized at: ${DB_PATH}`);
 
     // Create clients table if it doesn't exist
@@ -64,6 +68,23 @@ function getDb(): Database.Database {
         throw new Error('Database not initialized. Call initializeDatabase() first.');
     }
     return db;
+}
+
+/**
+ * Execute a function within a database transaction.
+ * If the function throws, the transaction is rolled back.
+ */
+export function withTransaction<T>(fn: () => T): T {
+    const database = getDb();
+    database.exec('BEGIN TRANSACTION');
+    try {
+        const result = fn();
+        database.exec('COMMIT');
+        return result;
+    } catch (error) {
+        database.exec('ROLLBACK');
+        throw error;
+    }
 }
 
 /**

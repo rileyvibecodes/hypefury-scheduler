@@ -38,7 +38,8 @@ import {
   getSystemHealth,
   getPostsByOperation,
   getRecentPostLogs,
-  getFailedPosts
+  getFailedPosts,
+  getPostById
 } from './db/operations.js';
 
 // Queue imports (retry queue status only - auto-retry disabled)
@@ -641,9 +642,32 @@ app.get('/', (_req: Request, res: Response) => {
             margin-bottom: 20px;
             border: 1px solid #ffeaa7;
         }
-        .no-clients p { 
-            margin: 0 0 10px; 
-            color: #856404; 
+        .no-clients p {
+            margin: 0 0 10px;
+            color: #856404;
+        }
+        /* Navigation Bar */
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .nav-bar a {
+            padding: 10px 20px;
+            text-decoration: none;
+            color: #4A90E2;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .nav-bar a:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+        .nav-bar a.active {
+            background: #4A90E2;
+            color: white;
         }
     </style>
 </head>
@@ -651,6 +675,11 @@ app.get('/', (_req: Request, res: Response) => {
     <div class="logo">
         <img src="/assets/67b28401d861c78220c0803f_Layer_1 (1) (1).svg" alt="The Birdhouse">
     </div>
+    <nav class="nav-bar">
+        <a href="/" class="active">Scheduler</a>
+        <a href="/clients">Clients</a>
+        <a href="/dashboard">Dashboard</a>
+    </nav>
     <div class="container">
         <h1>Hypefury Scheduler</h1>
         <p class="subtitle">Import posts from Google Docs to Hypefury</p>
@@ -1026,10 +1055,33 @@ app.get('/clients', (_req: Request, res: Response) => {
             color: #155724; 
             border: 1px solid #c3e6cb;
         }
-        .message.error { 
-            background: #f8d7da; 
-            color: #721c24; 
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        /* Navigation Bar */
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .nav-bar a {
+            padding: 10px 20px;
+            text-decoration: none;
+            color: #4A90E2;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .nav-bar a:hover {
+            background: rgba(74, 144, 226, 0.1);
+        }
+        .nav-bar a.active {
+            background: #4A90E2;
+            color: white;
         }
     </style>
 </head>
@@ -1037,11 +1089,12 @@ app.get('/clients', (_req: Request, res: Response) => {
     <div class="logo">
         <img src="/assets/67b28401d861c78220c0803f_Layer_1 (1) (1).svg" alt="The Birdhouse">
     </div>
+    <nav class="nav-bar">
+        <a href="/">Scheduler</a>
+        <a href="/clients" class="active">Clients</a>
+        <a href="/dashboard">Dashboard</a>
+    </nav>
     <div class="container">
-        <button class="btn-back" onclick="window.location.href='/'">
-            ← Back to Scheduler
-        </button>
-
         <h1>Manage Clients</h1>
         <p class="subtitle">Add, edit, or remove client accounts</p>
 
@@ -1337,6 +1390,217 @@ app.get('/api/dashboard/operation/:id', (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Failed to get operation details'
+    });
+  }
+});
+
+// ============================================
+// RETRY FUNCTIONALITY
+// ============================================
+
+// Retry a single failed post
+app.post('/api/posts/:id/retry', async (req: Request, res: Response) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'ERR_VALIDATION',
+          message: 'Invalid post ID',
+          fixAction: 'Refresh the page and try again'
+        }
+      });
+    }
+
+    // Get the post
+    const post = getPostById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'ERR_POST_NOT_FOUND',
+          message: 'Post not found',
+          fixAction: 'The post may have been deleted - refresh the page'
+        }
+      });
+    }
+
+    // Check if post is in a retryable state
+    if (post.status !== 'failed' && post.status !== 'permanently_failed') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'ERR_VALIDATION',
+          message: 'Post is not in a failed state',
+          fixAction: 'Only failed posts can be retried'
+        }
+      });
+    }
+
+    // Get the client for this post
+    const client = getClientById(post.client_id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'ERR_CLIENT_NOT_FOUND',
+          message: 'Client not found',
+          fixAction: 'The client may have been deleted - this post cannot be retried'
+        }
+      });
+    }
+
+    // Try to send the post to Hypefury
+    const postData = {
+      text: post.processed_content
+    };
+
+    console.log(`[Retry] Retrying post ${postId} for client ${client.name}`);
+
+    const result = await makeHfRequest(
+      HF_SCHEDULE_ENDPOINT,
+      JSON.stringify(postData),
+      client.api_key
+    );
+
+    if (result.error) {
+      // Update post with error
+      markPostPermanentlyFailed(postId, result.error.message);
+      return res.status(result.statusCode).json({
+        success: false,
+        error: result.error.toJSON()
+      });
+    }
+
+    if (result.statusCode >= 200 && result.statusCode < 300) {
+      // Success - update post status
+      markPostSent(postId, result.message || 'Success');
+      console.log(`[Retry] Post ${postId} sent successfully`);
+      return res.json({
+        success: true,
+        message: 'Post sent successfully'
+      });
+    }
+
+    // Unexpected response
+    markPostPermanentlyFailed(postId, result.message || 'Unknown error');
+    return res.status(result.statusCode).json({
+      success: false,
+      error: {
+        code: 'ERR_UNKNOWN',
+        message: result.message || 'Unexpected error',
+        fixAction: 'Try again - if this keeps happening, contact support'
+      }
+    });
+  } catch (error) {
+    console.error('[Retry] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'ERR_UNKNOWN',
+        message: error instanceof Error ? error.message : 'An error occurred',
+        fixAction: 'Try again - if this keeps happening, contact support'
+      }
+    });
+  }
+});
+
+// Retry all failed posts for an operation
+app.post('/api/operations/:id/retry-failed', async (req: Request, res: Response) => {
+  try {
+    const operationId = parseInt(req.params.id, 10);
+    if (isNaN(operationId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'ERR_VALIDATION',
+          message: 'Invalid operation ID',
+          fixAction: 'Refresh the page and try again'
+        }
+      });
+    }
+
+    // Get all posts for this operation
+    const posts = getPostsByOperation(operationId);
+    const failedPosts = posts.filter(p =>
+      p.status === 'failed' || p.status === 'permanently_failed'
+    );
+
+    if (failedPosts.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No failed posts to retry',
+        results: { total: 0, succeeded: 0, failed: 0 }
+      });
+    }
+
+    // Get client info
+    const firstPost = failedPosts[0];
+    const client = getClientById(firstPost.client_id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'ERR_CLIENT_NOT_FOUND',
+          message: 'Client not found',
+          fixAction: 'The client may have been deleted - these posts cannot be retried'
+        }
+      });
+    }
+
+    console.log(`[Retry] Retrying ${failedPosts.length} failed posts for operation ${operationId}`);
+
+    let succeeded = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const post of failedPosts) {
+      const postData = { text: post.processed_content };
+
+      const result = await makeHfRequest(
+        HF_SCHEDULE_ENDPOINT,
+        JSON.stringify(postData),
+        client.api_key
+      );
+
+      if (result.statusCode >= 200 && result.statusCode < 300) {
+        markPostSent(post.id, result.message || 'Success');
+        succeeded++;
+      } else {
+        const errorMsg = result.error?.message || result.message || 'Unknown error';
+        markPostPermanentlyFailed(post.id, errorMsg);
+        failed++;
+        if (errors.length < 3) {
+          errors.push(errorMsg);
+        }
+      }
+
+      // Small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    console.log(`[Retry] Completed: ${succeeded} succeeded, ${failed} failed`);
+
+    return res.json({
+      success: true,
+      message: `Retried ${failedPosts.length} posts: ${succeeded} succeeded, ${failed} failed`,
+      results: {
+        total: failedPosts.length,
+        succeeded,
+        failed,
+        errors: errors.length > 0 ? errors : undefined
+      }
+    });
+  } catch (error) {
+    console.error('[Retry] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'ERR_UNKNOWN',
+        message: error instanceof Error ? error.message : 'An error occurred',
+        fixAction: 'Try again - if this keeps happening, contact support'
+      }
     });
   }
 });

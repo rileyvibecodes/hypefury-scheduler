@@ -93,6 +93,10 @@ export function initializeOperationsDb(): void {
   }
 
   opsDb = new Database(OPS_DB_PATH);
+
+  // Enable foreign key constraints
+  opsDb.exec('PRAGMA foreign_keys = ON;');
+
   console.log(`Operations database initialized at: ${OPS_DB_PATH}`);
 
   // Create tables
@@ -166,6 +170,42 @@ export function getOperationsDb(): Database.Database {
     throw new Error('Operations database not initialized. Call initializeOperationsDb() first.');
   }
   return opsDb;
+}
+
+/**
+ * Execute a function within a database transaction.
+ * If the function throws, the transaction is rolled back.
+ * If the function succeeds, the transaction is committed.
+ */
+export function withTransaction<T>(fn: () => T): T {
+  const db = getOperationsDb();
+  db.exec('BEGIN TRANSACTION');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+
+/**
+ * Execute an async function within a database transaction.
+ * Note: For SQLite, async operations within transactions can be problematic.
+ * Use synchronous operations within the callback when possible.
+ */
+export async function withTransactionAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const db = getOperationsDb();
+  db.exec('BEGIN TRANSACTION');
+  try {
+    const result = await fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 // ============================================

@@ -2,8 +2,13 @@ import express, { Request, Response, NextFunction } from 'express';
 import { makeHfRequest, HF_AUTH_ENDPOINT, HF_SCHEDULE_ENDPOINT } from './utils.js';
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -50,6 +55,159 @@ const BulkScheduleSchema = z.object({
   }).refine(data => data.message || data.text, {
     message: 'Either "message" or "text" is required for each post'
   }))
+});
+
+// Serve the scheduler form at root
+app.get('/', (_req: Request, res: Response) => {
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Hypefury Scheduler</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #444; }
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        textarea { min-height: 150px; resize: vertical; }
+        button {
+            width: 100%;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+            display: none;
+        }
+        #result.show { display: block; }
+        #result.success { background: #d4edda; color: #155724; }
+        #result.error { background: #f8d7da; color: #721c24; }
+        .help-text { font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hypefury Scheduler</h1>
+        <p class="subtitle">Schedule posts to your Hypefury queue</p>
+
+        <label for="posts">Posts (one per line or separated by blank lines)</label>
+        <textarea id="posts" placeholder="Enter your posts here...
+
+Each paragraph becomes a separate post.
+
+You can add multiple posts at once!"></textarea>
+        <p class="help-text">Separate multiple posts with blank lines</p>
+
+        <button onclick="submitPosts()" id="submitBtn">Schedule Posts</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function submitPosts() {
+            const postsText = document.getElementById('posts').value.trim();
+            const result = document.getElementById('result');
+            const btn = document.getElementById('submitBtn');
+
+            if (!postsText) {
+                result.textContent = 'Please enter at least one post';
+                result.className = 'show error';
+                return;
+            }
+
+            // Split by double newlines or treat as single post
+            const posts = postsText.split(/\\n\\n+/)
+                .map(p => p.trim())
+                .filter(p => p.length > 0)
+                .map(text => ({ text }));
+
+            if (posts.length === 0) {
+                result.textContent = 'Please enter at least one post';
+                result.className = 'show error';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Scheduling...';
+            result.textContent = 'Sending ' + posts.length + ' post(s) to Hypefury...';
+            result.className = 'show';
+
+            try {
+                const response = await fetch('https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ posts })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    result.textContent = '✓ ' + data.message;
+                    result.className = 'show success';
+                    document.getElementById('posts').value = '';
+                } else {
+                    result.textContent = '✗ Error: ' + (data.message || 'Unknown error');
+                    result.className = 'show error';
+                }
+            } catch (error) {
+                result.textContent = '✗ Error: ' + error.message;
+                result.className = 'show error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Schedule Posts';
+            }
+        }
+
+        // Allow Ctrl+Enter to submit
+        document.getElementById('posts').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                submitPosts();
+            }
+        });
+    </script>
+</body>
+</html>`);
 });
 
 // Health check endpoint

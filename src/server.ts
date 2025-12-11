@@ -389,7 +389,7 @@ app.get('/', (_req: Request, res: Response) => {
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f5f5;
@@ -400,224 +400,128 @@ app.get('/', (_req: Request, res: Response) => {
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 { color: #333; margin-bottom: 10px; }
-        .subtitle { color: #666; margin-bottom: 25px; }
-        label { display: block; margin-bottom: 8px; font-weight: 500; color: #444; }
-        textarea, input, select {
+        h1 { color: #333; margin-bottom: 5px; font-size: 24px; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
+        input, select {
             width: 100%;
             padding: 12px;
-            margin-bottom: 15px;
             font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 8px;
-            transition: border-color 0.2s;
         }
-        textarea:focus, input:focus, select:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #4CAF50;
         }
-        textarea { min-height: 150px; resize: vertical; }
         button {
-            padding: 15px 30px;
-            font-size: 16px;
+            padding: 14px 24px;
+            font-size: 15px;
             font-weight: 600;
             background: #4CAF50;
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s;
-            margin-bottom: 10px;
+            width: 100%;
         }
         button:hover { background: #45a049; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-        button.secondary { background: #2196F3; }
-        button.secondary:hover { background: #1976D2; }
-        button.full-width { width: 100%; }
-        button.small { padding: 8px 16px; font-size: 14px; margin: 0; }
-        button.danger { background: #dc3545; }
-        button.danger:hover { background: #c82333; }
+        button.small {
+            padding: 8px 16px;
+            font-size: 13px;
+            width: auto;
+        }
         button.outline {
             background: white;
             color: #666;
-            border: 2px solid #ddd;
+            border: 1px solid #ddd;
         }
-        button.outline:hover { background: #f5f5f5; border-color: #ccc; }
+        button.outline:hover { background: #f9f9f9; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        .help-text { font-size: 12px; color: #888; margin-top: 6px; }
         #result {
             margin-top: 20px;
             padding: 15px;
-            background: #f8f9fa;
             border-radius: 8px;
-            white-space: pre-wrap;
-            font-family: monospace;
             font-size: 14px;
             display: none;
         }
         #result.show { display: block; }
         #result.success { background: #d4edda; color: #155724; }
         #result.error { background: #f8d7da; color: #721c24; }
-        #result.info { background: #cce5ff; color: #004085; }
-        .help-text { font-size: 13px; color: #888; margin-top: -10px; margin-bottom: 15px; }
+        #result.info { background: #e7f3ff; color: #004085; }
 
-        /* Client selector styles */
-        .client-selector {
+        /* Section spacing */
+        .section { margin-bottom: 20px; }
+
+        /* Client dropdown with edit link */
+        .client-row {
             display: flex;
+            align-items: center;
             gap: 10px;
-            margin-bottom: 20px;
-            align-items: flex-end;
+            margin-bottom: 6px;
         }
-        .client-selector .select-wrapper {
-            flex: 1;
-        }
-        .client-selector select {
-            margin-bottom: 0;
-        }
-        .client-selector button {
-            margin-bottom: 0;
+        .client-row select { margin-bottom: 0; flex: 1; }
+        .edit-link {
+            font-size: 13px;
+            color: #666;
+            text-decoration: none;
+            cursor: pointer;
             white-space: nowrap;
         }
-        .selected-client {
-            background: #e8f5e9;
-            border: 1px solid #4CAF50;
+        .edit-link:hover { color: #333; text-decoration: underline; }
+
+        /* Add client inline form */
+        .add-client-form {
+            display: none;
+            background: #f8f9fa;
             border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            display: none;
+            padding: 15px;
+            margin-top: 10px;
         }
-        .selected-client.show {
+        .add-client-form.show { display: block; }
+        .add-client-form input { margin-bottom: 10px; }
+        .add-client-form .btn-row {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            gap: 10px;
         }
-        .selected-client .client-name {
-            font-weight: 600;
-            color: #2e7d32;
-        }
+        .add-client-form .btn-row button { flex: 1; }
 
-        /* Modal styles */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .modal-overlay.show { display: flex; align-items: flex-start; justify-content: center; }
-        .modal {
-            background: white;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 100%;
-            margin: 20px auto;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .modal-header h2 { margin: 0; color: #333; }
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-close:hover { color: #333; background: none; }
-        .modal-body { padding: 20px; }
-        .modal-section {
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .modal-section:last-child { border-bottom: none; margin-bottom: 0; }
-        .modal-section h3 { margin: 0 0 15px 0; color: #444; font-size: 16px; }
-
-        /* Client list styles */
+        /* Client list (edit mode) */
         .client-list {
-            max-height: 300px;
-            overflow-y: auto;
+            display: none;
+            margin-top: 10px;
         }
+        .client-list.show { display: block; }
         .client-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            border: 1px solid #eee;
-            border-radius: 8px;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
             margin-bottom: 8px;
         }
         .client-item:last-child { margin-bottom: 0; }
-        .client-item .client-info {
-            flex: 1;
-        }
-        .client-item .client-name { font-weight: 500; }
-        .client-item .client-key { font-size: 12px; color: #888; font-family: monospace; }
-        .client-item .client-actions {
+        .client-item-name { font-weight: 500; font-size: 14px; }
+        .client-item-actions {
             display: flex;
             gap: 8px;
         }
-        .no-clients {
+        .client-item-actions button { padding: 6px 12px; font-size: 12px; }
+        .done-editing {
+            margin-top: 12px;
             text-align: center;
-            padding: 30px;
-            color: #888;
         }
-
-        /* Help section */
-        .help-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-        }
-        .help-section h4 { margin: 0 0 10px 0; color: #333; font-size: 14px; }
-        .help-section ol {
-            margin: 0;
-            padding-left: 20px;
+        .done-editing a {
             font-size: 13px;
-            color: #666;
+            color: #4CAF50;
+            cursor: pointer;
+            text-decoration: none;
         }
-        .help-section li { margin-bottom: 5px; }
-        .help-section .warning {
-            margin-top: 10px;
-            padding: 10px;
-            background: #fff3cd;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #856404;
-        }
-
-        /* Form group */
-        .form-group { margin-bottom: 15px; }
-        .form-group:last-child { margin-bottom: 0; }
-        .form-row {
-            display: flex;
-            gap: 10px;
-        }
-        .form-row > * { flex: 1; }
-
-        /* Edit form */
-        .edit-form {
-            display: none;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-top: 8px;
-        }
-        .edit-form.show { display: block; }
+        .done-editing a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -625,85 +529,47 @@ app.get('/', (_req: Request, res: Response) => {
         <h1>Hypefury Scheduler</h1>
         <p class="subtitle">Import posts from Google Docs to Hypefury</p>
 
-        <!-- Client Selector -->
-        <div class="client-selector">
-            <div class="select-wrapper">
-                <label for="clientSelect">Select Client</label>
+        <!-- Client Selection -->
+        <div class="section">
+            <label>Client</label>
+            <div class="client-row">
                 <select id="clientSelect">
-                    <option value="">-- Select a client --</option>
+                    <option value="">Choose a client...</option>
                 </select>
+                <a class="edit-link" onclick="toggleEditMode()">edit</a>
             </div>
-            <button type="button" class="outline" onclick="openClientManager()">Manage Clients</button>
+
+            <!-- Inline Add Client Form -->
+            <div id="addClientForm" class="add-client-form">
+                <input type="text" id="newClientName" placeholder="Client name (e.g. Acme Corp)">
+                <input type="text" id="newClientKey" placeholder="Hypefury API key">
+                <div class="btn-row">
+                    <button onclick="saveNewClient()">Save Client</button>
+                    <button class="outline" onclick="cancelAddClient()">Cancel</button>
+                </div>
+                <p class="help-text" style="margin-top: 10px;">Find API key: Hypefury → Settings → Integrations → API Access</p>
+            </div>
+
+            <!-- Client List (Edit Mode) -->
+            <div id="clientList" class="client-list"></div>
         </div>
 
-        <div id="selectedClientBanner" class="selected-client">
-            <span>Scheduling for: <span class="client-name" id="selectedClientName"></span></span>
-            <button type="button" class="small outline" onclick="clearClientSelection()">Change</button>
+        <!-- Google Doc URL -->
+        <div class="section">
+            <label for="docUrl">Google Doc URL</label>
+            <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/...">
+            <p class="help-text">Doc must be shared as "Anyone with the link can view"</p>
         </div>
 
-        <label for="docUrl">Google Doc URL</label>
-        <input type="url" id="docUrl" placeholder="https://docs.google.com/document/d/your-doc-id/edit">
-        <p class="help-text">Make sure your doc is shared as "Anyone with the link can view"</p>
-        <button onclick="submitGoogleDoc()" id="submitDocBtn" class="full-width">Import from Google Doc</button>
+        <button onclick="submitGoogleDoc()" id="submitBtn">Import & Schedule Posts</button>
 
         <div id="result"></div>
-    </div>
-
-    <!-- Client Management Modal -->
-    <div id="clientModal" class="modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Manage Clients</h2>
-                <button class="modal-close" onclick="closeClientManager()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Add New Client -->
-                <div class="modal-section">
-                    <h3>Add New Client</h3>
-                    <div class="form-group">
-                        <label for="newClientName">Client Name</label>
-                        <input type="text" id="newClientName" placeholder="e.g., Acme Corp">
-                    </div>
-                    <div class="form-group">
-                        <label for="newClientApiKey">Hypefury API Key</label>
-                        <input type="text" id="newClientApiKey" placeholder="Paste API key here">
-                    </div>
-                    <button onclick="addClient()" class="full-width">Add Client</button>
-                    <div id="addClientResult" style="margin-top: 10px;"></div>
-                </div>
-
-                <!-- Existing Clients -->
-                <div class="modal-section">
-                    <h3>Existing Clients</h3>
-                    <div id="clientList" class="client-list">
-                        <div class="no-clients">Loading clients...</div>
-                    </div>
-                </div>
-
-                <!-- Help -->
-                <div class="modal-section">
-                    <div class="help-section">
-                        <h4>How to Find Your Hypefury API Key</h4>
-                        <ol>
-                            <li>Log into your client's Hypefury account</li>
-                            <li>Click Settings (gear icon in the sidebar)</li>
-                            <li>Click "Integrations" in the menu</li>
-                            <li>Scroll down to "API Access"</li>
-                            <li>Click "Generate API Key" or copy the existing key</li>
-                            <li>Paste the key above</li>
-                        </ol>
-                        <div class="warning">
-                            Keep API keys secure - they provide full access to schedule posts on the account!
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
         let selectedClientId = null;
         let clients = [];
+        let editMode = false;
 
         // Load clients on page load
         document.addEventListener('DOMContentLoaded', loadClients);
@@ -714,7 +580,7 @@ app.get('/', (_req: Request, res: Response) => {
                 const data = await response.json();
                 if (data.success) {
                     clients = data.clients;
-                    updateClientDropdown();
+                    updateDropdown();
                     updateClientList();
                 }
             } catch (error) {
@@ -722,241 +588,159 @@ app.get('/', (_req: Request, res: Response) => {
             }
         }
 
-        function updateClientDropdown() {
+        function updateDropdown() {
             const select = document.getElementById('clientSelect');
             const currentValue = select.value;
 
-            select.innerHTML = '<option value="">-- Select a client --</option>';
-            clients.forEach(client => {
-                const option = document.createElement('option');
-                option.value = client.id;
-                option.textContent = client.name;
-                select.appendChild(option);
+            select.innerHTML = '<option value="">Choose a client...</option>';
+            clients.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                select.appendChild(opt);
             });
+            select.innerHTML += '<option value="__add__">+ Add new client</option>';
 
-            // Restore selection if still valid
-            if (currentValue && clients.some(c => c.id == currentValue)) {
+            if (currentValue && currentValue !== '__add__' && clients.some(c => c.id == currentValue)) {
                 select.value = currentValue;
             }
         }
 
         function updateClientList() {
             const listEl = document.getElementById('clientList');
-
             if (clients.length === 0) {
-                listEl.innerHTML = '<div class="no-clients">No clients added yet. Add your first client above!</div>';
+                listEl.innerHTML = '<p style="color:#888;font-size:13px;">No clients yet</p>';
                 return;
             }
-
-            listEl.innerHTML = clients.map(client => \`
-                <div class="client-item" data-id="\${client.id}">
-                    <div class="client-info">
-                        <div class="client-name">\${escapeHtml(client.name)}</div>
-                    </div>
-                    <div class="client-actions">
-                        <button class="small outline" onclick="editClient(\${client.id})">Edit</button>
-                        <button class="small danger" onclick="confirmDeleteClient(\${client.id}, '\${escapeHtml(client.name)}')">Delete</button>
+            listEl.innerHTML = clients.map(c => \`
+                <div class="client-item">
+                    <span class="client-item-name">\${esc(c.name)}</span>
+                    <div class="client-item-actions">
+                        <button class="small outline" onclick="deleteClientConfirm(\${c.id}, '\${esc(c.name)}')">Delete</button>
                     </div>
                 </div>
-                <div id="editForm\${client.id}" class="edit-form">
-                    <div class="form-group">
-                        <label>Client Name</label>
-                        <input type="text" id="editName\${client.id}" value="\${escapeHtml(client.name)}">
-                    </div>
-                    <div class="form-group">
-                        <label>New API Key (leave blank to keep current)</label>
-                        <input type="text" id="editKey\${client.id}" placeholder="Enter new API key">
-                    </div>
-                    <div class="form-row">
-                        <button class="small" onclick="saveClient(\${client.id})">Save</button>
-                        <button class="small outline" onclick="cancelEdit(\${client.id})">Cancel</button>
-                    </div>
-                </div>
-            \`).join('');
+            \`).join('') + '<div class="done-editing"><a onclick="toggleEditMode()">Done editing</a></div>';
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function esc(t) {
+            const d = document.createElement('div');
+            d.textContent = t;
+            return d.innerHTML;
         }
 
-        // Client selection
+        // Dropdown change handler
         document.getElementById('clientSelect').addEventListener('change', function() {
-            selectedClientId = this.value ? parseInt(this.value) : null;
-            const banner = document.getElementById('selectedClientBanner');
-            const nameEl = document.getElementById('selectedClientName');
-
-            if (selectedClientId) {
-                const client = clients.find(c => c.id === selectedClientId);
-                if (client) {
-                    nameEl.textContent = client.name;
-                    banner.classList.add('show');
-                    this.parentElement.parentElement.querySelector('.select-wrapper').style.display = 'none';
-                }
+            if (this.value === '__add__') {
+                this.value = '';
+                showAddForm();
             } else {
-                banner.classList.remove('show');
+                selectedClientId = this.value ? parseInt(this.value) : null;
+                hideAddForm();
+                hideEditMode();
             }
         });
 
-        function clearClientSelection() {
-            selectedClientId = null;
-            document.getElementById('clientSelect').value = '';
-            document.getElementById('selectedClientBanner').classList.remove('show');
-            document.querySelector('.client-selector .select-wrapper').style.display = 'block';
+        function showAddForm() {
+            document.getElementById('addClientForm').classList.add('show');
+            document.getElementById('newClientName').focus();
+            hideEditMode();
         }
 
-        // Modal functions
-        function openClientManager() {
-            loadClients();
-            document.getElementById('clientModal').classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeClientManager() {
-            document.getElementById('clientModal').classList.remove('show');
-            document.body.style.overflow = '';
-            // Clear add form
+        function hideAddForm() {
+            document.getElementById('addClientForm').classList.remove('show');
             document.getElementById('newClientName').value = '';
-            document.getElementById('newClientApiKey').value = '';
-            document.getElementById('addClientResult').innerHTML = '';
+            document.getElementById('newClientKey').value = '';
         }
 
-        // Close modal on overlay click
-        document.getElementById('clientModal').addEventListener('click', function(e) {
-            if (e.target === this) closeClientManager();
-        });
+        function cancelAddClient() {
+            hideAddForm();
+        }
 
-        // Add client
-        async function addClient() {
+        async function saveNewClient() {
             const name = document.getElementById('newClientName').value.trim();
-            const apiKey = document.getElementById('newClientApiKey').value.trim();
-            const resultEl = document.getElementById('addClientResult');
+            const apiKey = document.getElementById('newClientKey').value.trim();
+            const result = document.getElementById('result');
 
-            if (!name) {
-                resultEl.innerHTML = '<div style="color: #dc3545;">Please enter a client name</div>';
+            if (!name || !apiKey) {
+                result.textContent = 'Please enter both client name and API key';
+                result.className = 'show error';
                 return;
             }
-            if (!apiKey) {
-                resultEl.innerHTML = '<div style="color: #dc3545;">Please enter an API key</div>';
-                return;
-            }
-
-            resultEl.innerHTML = '<div style="color: #666;">Adding client...</div>';
 
             try {
-                const response = await fetch('/api/clients', {
+                const resp = await fetch('/api/clients', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, apiKey })
                 });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    resultEl.innerHTML = '<div style="color: #28a745;">Client added successfully!</div>';
-                    document.getElementById('newClientName').value = '';
-                    document.getElementById('newClientApiKey').value = '';
-                    await loadClients();
-                    setTimeout(() => { resultEl.innerHTML = ''; }, 3000);
-                } else {
-                    resultEl.innerHTML = '<div style="color: #dc3545;">' + escapeHtml(data.message) + '</div>';
-                }
-            } catch (error) {
-                resultEl.innerHTML = '<div style="color: #dc3545;">Error: ' + escapeHtml(error.message) + '</div>';
-            }
-        }
-
-        // Edit client
-        function editClient(id) {
-            // Close any other edit forms
-            document.querySelectorAll('.edit-form').forEach(form => form.classList.remove('show'));
-            document.getElementById('editForm' + id).classList.add('show');
-        }
-
-        function cancelEdit(id) {
-            document.getElementById('editForm' + id).classList.remove('show');
-            // Reset values
-            const client = clients.find(c => c.id === id);
-            if (client) {
-                document.getElementById('editName' + id).value = client.name;
-                document.getElementById('editKey' + id).value = '';
-            }
-        }
-
-        async function saveClient(id) {
-            const name = document.getElementById('editName' + id).value.trim();
-            const apiKey = document.getElementById('editKey' + id).value.trim();
-
-            if (!name) {
-                alert('Client name is required');
-                return;
-            }
-
-            const body = { name };
-            if (apiKey) body.apiKey = apiKey;
-
-            try {
-                const response = await fetch('/api/clients/' + id, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                const data = await response.json();
+                const data = await resp.json();
 
                 if (data.success) {
                     await loadClients();
-                    document.getElementById('editForm' + id).classList.remove('show');
+                    hideAddForm();
+                    // Auto-select the new client
+                    document.getElementById('clientSelect').value = data.client.id;
+                    selectedClientId = data.client.id;
+                    result.textContent = 'Client "' + name + '" added!';
+                    result.className = 'show success';
+                    setTimeout(() => result.className = '', 3000);
                 } else {
-                    alert(data.message);
+                    result.textContent = data.message;
+                    result.className = 'show error';
                 }
-            } catch (error) {
-                alert('Error: ' + error.message);
+            } catch (e) {
+                result.textContent = 'Error: ' + e.message;
+                result.className = 'show error';
             }
         }
 
-        // Delete client
-        function confirmDeleteClient(id, name) {
-            if (confirm('Delete "' + name + '"?\\n\\nThis cannot be undone.')) {
+        function toggleEditMode() {
+            editMode = !editMode;
+            const list = document.getElementById('clientList');
+            if (editMode) {
+                list.classList.add('show');
+                hideAddForm();
+            } else {
+                list.classList.remove('show');
+            }
+        }
+
+        function hideEditMode() {
+            editMode = false;
+            document.getElementById('clientList').classList.remove('show');
+        }
+
+        function deleteClientConfirm(id, name) {
+            if (confirm('Delete "' + name + '"? This cannot be undone.')) {
                 deleteClient(id);
             }
         }
 
         async function deleteClient(id) {
             try {
-                const response = await fetch('/api/clients/' + id, {
-                    method: 'DELETE'
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    if (selectedClientId === id) {
-                        clearClientSelection();
-                    }
-                    await loadClients();
-                } else {
-                    alert(data.message);
+                await fetch('/api/clients/' + id, { method: 'DELETE' });
+                if (selectedClientId === id) {
+                    selectedClientId = null;
+                    document.getElementById('clientSelect').value = '';
                 }
-            } catch (error) {
-                alert('Error: ' + error.message);
+                await loadClients();
+            } catch (e) {
+                alert('Error: ' + e.message);
             }
         }
 
         // Submit Google Doc
         async function submitGoogleDoc() {
             const result = document.getElementById('result');
+            const btn = document.getElementById('submitBtn');
 
             if (!selectedClientId) {
-                result.textContent = 'Please select a client before importing from Google Doc';
+                result.textContent = 'Please select a client first';
                 result.className = 'show error';
                 return;
             }
 
             const docUrl = document.getElementById('docUrl').value.trim();
-            const btn = document.getElementById('submitDocBtn');
-
             if (!docUrl) {
                 result.textContent = 'Please enter a Google Doc URL';
                 result.className = 'show error';
@@ -964,58 +748,45 @@ app.get('/', (_req: Request, res: Response) => {
             }
 
             if (!docUrl.includes('docs.google.com/document')) {
-                result.textContent = 'Please enter a valid Google Docs URL (docs.google.com/document/...)';
+                result.textContent = 'Please enter a valid Google Docs URL';
                 result.className = 'show error';
                 return;
             }
 
             btn.disabled = true;
-            btn.textContent = 'Fetching document...';
-            const clientName = clients.find(c => c.id === selectedClientId)?.name || 'Unknown';
-            result.textContent = 'Fetching and parsing Google Doc for ' + clientName + '...';
+            btn.textContent = 'Importing...';
+            const clientName = clients.find(c => c.id === selectedClientId)?.name || '';
+            result.textContent = 'Importing posts for ' + clientName + '...';
             result.className = 'show info';
 
             try {
-                const response = await fetch('/api/schedule/google-doc', {
+                const resp = await fetch('/api/schedule/google-doc', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: docUrl, clientId: selectedClientId })
                 });
-
-                const data = await response.json();
+                const data = await resp.json();
 
                 if (data.success) {
-                    result.textContent = '✓ ' + data.message + ' (for ' + clientName + ')';
-                    if (data.posts && data.posts.length > 0) {
-                        result.textContent += '\\n\\nPosts scheduled:\\n' + data.posts.map((p, i) => (i+1) + '. ' + p.substring(0, 50) + (p.length > 50 ? '...' : '')).join('\\n');
-                    }
+                    result.textContent = '✓ ' + data.message;
                     result.className = 'show success';
                     document.getElementById('docUrl').value = '';
                 } else {
-                    result.textContent = '✗ Error: ' + (data.message || 'Unknown error');
+                    result.textContent = '✗ ' + (data.message || 'Unknown error');
                     result.className = 'show error';
                 }
-            } catch (error) {
-                result.textContent = '✗ Error: ' + error.message;
+            } catch (e) {
+                result.textContent = '✗ ' + e.message;
                 result.className = 'show error';
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Import from Google Doc';
+                btn.textContent = 'Import & Schedule Posts';
             }
         }
 
-        // Keyboard shortcut - Enter to submit
+        // Enter to submit
         document.getElementById('docUrl').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                submitGoogleDoc();
-            }
-        });
-
-        // Escape to close modal
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeClientManager();
-            }
+            if (e.key === 'Enter') submitGoogleDoc();
         });
     </script>
 </body>

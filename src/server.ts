@@ -73,73 +73,38 @@ async function fetchGoogleDocContent(docId: string): Promise<string> {
 }
 
 function parseDocumentIntoPosts(content: string): string[] {
-  let text = content.replace(/\r\n/g, '\n').trim();
+  // Normalize line endings
+  let text = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
 
-  // Step 1: Split by major separators (_____ or ----- lines) to get sections
-  const sections = text.split(/^[_\-=]{3,}$/m);
+  // Split by post delimiters:
+  // 1. Underscores (___) on a line - separates days
+  // 2. Em dash (—) on its own line - separates posts within a day
+  let chunks = text.split(/^[_]{3,}$/m); // First split by day separators
+  let allPosts: string[] = [];
 
-  // Step 2: Within each section, split by blank lines to get individual posts
-  let rawPosts: string[] = [];
-  for (const section of sections) {
-    const trimmed = section.trim();
-    if (!trimmed) continue;
-    const posts = trimmed.split(/\n\n+/);
-    rawPosts.push(...posts);
+  for (const chunk of chunks) {
+    // Then split each day by em dash
+    const dayPosts = chunk.split(/^—$/m);
+    allPosts.push(...dayPosts);
   }
 
-  // Step 3: Merge headers with their bullet lists (fixes header/bullets getting split)
-  let mergedPosts: string[] = [];
-  let i = 0;
-
-  while (i < rawPosts.length) {
-    let current = rawPosts[i].trim();
-
-    // Skip standalone "Day X" labels
-    if (/^Day\s*\d+:?\s*$/i.test(current)) {
-      i++;
-      continue;
-    }
-
-    // Remove "Day X" from the start of posts
-    current = current.replace(/^Day\s*\d+:?\s*\n*/i, '');
-    current = current.trim();
-
-    if (!current) {
-      i++;
-      continue;
-    }
-
-    // Check if this looks like a header (ends with : or ?, relatively short, single line)
-    const isHeader = /[:\?]\s*$/.test(current) && current.length < 150 && !current.includes('\n');
-
-    if (isHeader && i + 1 < rawPosts.length) {
-      const next = rawPosts[i + 1]?.trim() || '';
-      // Check if next chunk starts with bullets or is a list
-      const nextIsList = /^[•\*\-\d]/.test(next);
-
-      if (nextIsList) {
-        // Merge header with its list
-        mergedPosts.push(current + '\n' + next);
-        i += 2;
-        continue;
-      }
-    }
-
-    mergedPosts.push(current);
-    i++;
-  }
-
-  // Step 4: Final cleanup
-  return mergedPosts
+  return allPosts
     .map(p => {
       let post = p.trim();
+
+      // Remove "Day X" headers at the start
+      post = post.replace(/^Day\s*\d+:?\s*\n*/i, '');
+
       // Convert * bullets to •
       post = post.replace(/^\* /gm, '• ');
-      return post;
+
+      // Clean up excessive blank lines (more than 2 newlines -> 2)
+      post = post.replace(/\n{3,}/g, '\n\n');
+
+      return post.trim();
     })
     .filter(p => p.length >= 10)
-    .filter(p => /[a-zA-Z]/.test(p))
-    .filter(p => !/^[\s_\-=*•]+$/.test(p)); // Remove separator-only posts
+    .filter(p => /[a-zA-Z]/.test(p));
 }
 
 const __filename = fileURLToPath(import.meta.url);

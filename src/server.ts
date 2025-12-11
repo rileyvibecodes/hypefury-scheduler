@@ -774,6 +774,15 @@ app.get('/clients', (_req: Request, res: Response) => {
             font-size: 14px;
         }
         .btn-delete:hover { background: #c82333; }
+        .btn-test {
+            background: #17a2b8;
+            padding: 10px 20px;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+        .btn-test:hover { background: #138496; }
+        .btn-test.valid { background: #28a745; }
+        .btn-test.invalid { background: #dc3545; }
         .help-text { font-size: 12px; color: #888; margin-top: -8px; margin-bottom: 15px; }
 
         /* Add Client Section */
@@ -901,7 +910,10 @@ app.get('/clients', (_req: Request, res: Response) => {
                         <div class="client-name">\${esc(c.name)}</div>
                         <div class="client-key">API Key: \${c.apiKeyMasked || '••••••••'}</div>
                     </div>
-                    <button class="btn-delete" onclick="deleteClient(\${c.id}, '\${esc(c.name)}')">Delete</button>
+                    <div>
+                        <button class="btn-test" id="test-btn-\${c.id}" onclick="testClient(\${c.id})">Test</button>
+                        <button class="btn-delete" onclick="deleteClient(\${c.id}, '\${esc(c.name)}')">Delete</button>
+                    </div>
                 </div>
             \`).join('');
         }
@@ -951,6 +963,40 @@ app.get('/clients', (_req: Request, res: Response) => {
             } catch (e) {
                 showMessage('Error: ' + e.message, 'error');
             }
+        }
+
+        async function testClient(id) {
+            const btn = document.getElementById('test-btn-' + id);
+            const originalText = btn.textContent;
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/clients/' + id + '/validate', { method: 'POST' });
+                const data = await resp.json();
+
+                if (data.valid === true) {
+                    btn.textContent = '✓ Valid';
+                    btn.className = 'btn-test valid';
+                    showMessage('API key is valid! Ready to schedule posts.', 'success');
+                } else if (data.valid === false) {
+                    btn.textContent = '✗ Invalid';
+                    btn.className = 'btn-test invalid';
+                    showMessage('API key is INVALID. Please check: Hypefury → Settings → External Apps → Generate new key', 'error');
+                } else {
+                    btn.textContent = '? Unknown';
+                    showMessage('Could not verify API key: ' + (data.message || 'Unknown error'), 'error');
+                }
+            } catch (e) {
+                btn.textContent = 'Error';
+                showMessage('Test failed: ' + e.message, 'error');
+            }
+
+            btn.disabled = false;
+            setTimeout(() => {
+                btn.textContent = 'Test';
+                btn.className = 'btn-test';
+            }, 5000);
         }
 
         async function deleteClient(id, name) {

@@ -742,7 +742,7 @@ app.get('/clients', (_req: Request, res: Response) => {
 
             <label for="apiKey">Hypefury API Key</label>
             <input type="text" id="apiKey" placeholder="Paste API key here">
-            <p class="help-text">Find it: Hypefury → Settings → Integrations → API Access</p>
+            <p class="help-text">Find it: Hypefury → Settings → Connections → External Apps → Generate API key</p>
 
             <button class="btn-add" onclick="addClient()">Add Client</button>
         </div>

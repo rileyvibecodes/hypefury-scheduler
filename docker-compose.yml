@@ -17,8 +17,10 @@ services:
       - scheduler_data:/app/data
     command: >
       sh -c '
-        if [ ! -d /app/repo/.git ]; then
-          apt-get update && apt-get install -y git python3 make g++ curl &&
+        apt-get update && apt-get install -y git python3 make g++ curl &&
+        if [ -d /app/repo/.git ]; then
+          cd /app/repo && git pull origin main
+        else
           git clone https://github.com/rileyvibecodes/hypefury-scheduler.git /app/repo
         fi &&
         cd /app/repo &&

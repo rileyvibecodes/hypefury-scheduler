@@ -83,7 +83,11 @@ function parseDocumentIntoPosts(content: string): string[] {
     .map(p => p.trim())
     .filter(p => p.length > 0)
     // Filter out very short content that's likely not a real post
-    .filter(p => p.length >= 5);
+    .filter(p => p.length >= 5)
+    // Filter out separator lines (only underscores, dashes, equals, asterisks, etc.)
+    .filter(p => !/^[\s_\-=*~#]+$/.test(p))
+    // Must contain at least one letter to be a real post
+    .filter(p => /[a-zA-Z]/.test(p));
 
   return posts;
 }

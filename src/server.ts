@@ -812,23 +812,33 @@ app.get('/', (_req: Request, res: Response) => {
             result.className = 'show info';
 
             try {
-                const resp = await fetch('/api/schedule/google-doc', {
+                // Send to N8N webhook - N8N handles parsing and formatting
+                const resp = await fetch('https://n8n.srv1176124.hstgr.cloud/webhook/schedule-content', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: docUrl, clientId: selectedClientId })
                 });
-                const data = await resp.json();
 
-                if (data.success) {
-                    result.textContent = data.message;
+                // N8N may return text or JSON
+                const contentType = resp.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await resp.json();
+                } else {
+                    const text = await resp.text();
+                    data = { success: resp.ok, message: text || 'Request sent to N8N' };
+                }
+
+                if (resp.ok || data.success) {
+                    result.textContent = data.message || 'Posts sent to N8N for processing!';
                     result.className = 'show success';
                     document.getElementById('docUrl').value = '';
                 } else {
-                    result.textContent = data.message || 'Unknown error';
+                    result.textContent = data.message || 'N8N returned an error';
                     result.className = 'show error';
                 }
             } catch (e) {
-                result.textContent = e.message;
+                result.textContent = 'Failed to connect to N8N: ' + e.message;
                 result.className = 'show error';
             } finally {
                 btn.disabled = false;

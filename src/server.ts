@@ -1672,8 +1672,16 @@ app.post('/api/schedule', async (req: Request, res: Response) => {
 
     const { message, text, scheduledTime, time } = validation.data;
     const { clientId } = req.body;
-    const postContent = message || text;
+    let postContent = message || text;
     const postTime = scheduledTime || time;
+
+    // Fix escaped quotes from N8N double-encoding
+    if (postContent) {
+      postContent = postContent
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\\\/g, '\\');
+    }
 
     // Get client API key if clientId provided
     let clientApiKey: string | undefined;
@@ -1780,8 +1788,16 @@ app.post('/api/schedule/bulk', async (req: Request, res: Response) => {
 
     for (let i = 0; i < posts.length; i++) {
       const post = posts[i];
-      const postContent = post.message || post.text;
+      let postContent = post.message || post.text;
       const postTime = post.scheduledTime || post.time;
+
+      // Fix escaped quotes from N8N double-encoding
+      if (postContent) {
+        postContent = postContent
+          .replace(/\\"/g, '"')      // Fix escaped double quotes
+          .replace(/\\'/g, "'")      // Fix escaped single quotes
+          .replace(/\\\\/g, '\\');   // Fix escaped backslashes
+      }
 
       const postData: Record<string, unknown> = {
         text: postContent
@@ -2095,7 +2111,12 @@ app.post('/webhook/schedule-content', async (req: Request, res: Response) => {
 
     // If content string is provided (single post)
     if (content && typeof content === 'string') {
-      const response = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify({ text: content }), clientApiKey);
+      // Fix escaped quotes from N8N double-encoding
+      const cleanContent = content
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\\\/g, '\\');
+      const response = await makeHfRequest(HF_SCHEDULE_ENDPOINT, JSON.stringify({ text: cleanContent }), clientApiKey);
 
       if (response && (response.statusCode === 200 || response.statusCode === 201)) {
         return res.status(200).json({

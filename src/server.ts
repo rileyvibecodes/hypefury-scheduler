@@ -189,6 +189,9 @@ function parseDocumentIntoPosts(content: string): string[] {
       // Remove "Day X" headers at the start
       post = post.replace(/^Day\s*\d+:?\s*\n*/i, '');
 
+      // Remove weekday names at the start (Monday, Tuesday, etc.)
+      post = post.replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):?\s*\n*/i, '');
+
       // Convert * bullets to •
       post = post.replace(/^\* /gm, '• ');
 

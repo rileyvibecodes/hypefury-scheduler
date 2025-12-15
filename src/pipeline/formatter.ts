@@ -100,7 +100,8 @@ export function formatPost(post: string): string {
  *
  * Splitting rules:
  * 1. Split by underscore separators (___) - these separate days
- * 2. Split by em-dash (—) on its own line - these separate posts within a day
+ * 2. Split by dashes on their own line - these separate posts within a day
+ *    Accepts: em-dash (—), en-dash (–), or double-hyphen (--)
  */
 export function parseDocumentIntoRawChunks(content: string): string[] {
   // Normalize line endings
@@ -111,9 +112,10 @@ export function parseDocumentIntoRawChunks(content: string): string[] {
   const allPosts: string[] = [];
 
   for (const chunk of chunks) {
-    // Then split each day by em dash on its own line
-    const dayPosts = chunk.split(/^—$/m);
-    allPosts.push(...dayPosts);
+    // Split by em-dash, en-dash, or double-hyphen on their own line
+    const dayPosts = chunk.split(/^(—|–|--+)$/m);
+    // Filter out the separator matches (they get captured by the regex group)
+    allPosts.push(...dayPosts.filter(p => !/^(—|–|--+)$/.test(p)));
   }
 
   // Return raw chunks - they'll be processed through the pipeline

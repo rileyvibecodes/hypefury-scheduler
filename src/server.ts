@@ -172,14 +172,16 @@ function parseDocumentIntoPosts(content: string): string[] {
 
   // Split by post delimiters:
   // 1. Underscores (___) on a line - separates days
-  // 2. Em dash (—) on its own line - separates posts within a day
+  // 2. Dashes on their own line - separates posts within a day
+  //    Accepts: em-dash (—), en-dash (–), or double-hyphen (--)
   let chunks = text.split(/^[_]{3,}$/m); // First split by day separators
   let allPosts: string[] = [];
 
   for (const chunk of chunks) {
-    // Then split each day by em dash
-    const dayPosts = chunk.split(/^—$/m);
-    allPosts.push(...dayPosts);
+    // Split by em-dash, en-dash, or double-hyphen on their own line
+    const dayPosts = chunk.split(/^(—|–|--+)$/m);
+    // Filter out the separator matches (they get captured by the regex group)
+    allPosts.push(...dayPosts.filter(p => !/^(—|–|--+)$/.test(p)));
   }
 
   return allPosts
